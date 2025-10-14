@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLE Debug - Trames en temps réel</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: #2d2d30;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: #4ec9b0;
+            font-size: 1.8em;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9em;
+        }
+
+        .stat-item {
+            background: #3e3e42;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+
+        .stat-value {
+            color: #569cd6;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .controls {
+            background: #2d2d30;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9em;
+        }
+
+        button:hover {
+            background: #1177bb;
+        }
+
+        button.danger {
+            background: #d16969;
+        }
+
+        button.danger:hover {
+            background: #e07979;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ec9b0;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        .status-indicator.disconnected {
+            background: #f48771;
+        }
+
+        .table-container {
+            background: #2d2d30;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #3e3e42;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            color: #4ec9b0;
+            font-weight: bold;
+            border-bottom: 2px solid #4ec9b0;
+        }
+
+        tbody {
+            display: block;
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+
+        thead, tbody tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #3e3e42;
+        }
+
+        tbody tr {
+            transition: background 0.3s;
+        }
+
+        tbody tr:hover {
+            background: #3e3e42;
+        }
+
+        tbody tr.new-entry {
+            animation: highlight 1s ease-out;
+        }
+
+        @keyframes highlight {
+            0% { background: #264f78; }
+            100% { background: transparent; }
+        }
+
+        .router {
+            color: #569cd6;
+            font-weight: bold;
+        }
+
+        .code {
+            color: #ce9178;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .badge-id {
+            color: #b5cea8;
+            font-family: 'Courier New', monospace;
+        }
+
+        .rssi {
+            font-weight: bold;
+        }
+
+        .rssi.good {
+            color: #4ec9b0;
+        }
+
+        .rssi.medium {
+            color: #dcdcaa;
+        }
+
+        .rssi.poor {
+            color: #f48771;
+        }
+
+        .timestamp {
+            color: #858585;
+            font-size: 0.85em;
+        }
+
+        .filter-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            background: #3e3e42;
+            border: 1px solid #555;
+            color: #d4d4d4;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.9em;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4ec9b0;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #858585;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>🔍 BLE Debug Monitor
+                    <span class="status-indicator" id="status"></span>
+                </h1>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div>Total Trames</div>
+                    <div class="stat-value" id="stat-total">0</div>
+                </div>
+                <div class="stat-item">
+                    <div>Trames/min</div>
+                    <div class="stat-value" id="stat-rate">0</div>
+                </div>
+                <div class="stat-item">
+                    <div>Badges Uniques</div>
+                    <div class="stat-value" id="stat-badges">0</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="controls">
+            <div class="filter-container">
+                <label>Filtrer:</label>
+                <input type="text" id="filter-router" placeholder="Routeur..." onkeyup="filterTable()">
+                <input type="text" id="filter-code" placeholder="Code..." onkeyup="filterTable()">
+                <input type="text" id="filter-badge" placeholder="Badge ID..." onkeyup="filterTable()">
+            </div>
+            <button onclick="clearFrames()" class="danger">🗑️ Effacer</button>
+            <button onclick="toggleAutoscroll()" id="autoscroll-btn">📜 Auto-scroll: ON</button>
+            <button onclick="exportCSV()">💾 Export CSV</button>
+        </div>
+
+        <div class="table-container">
+            <table id="frames-table">
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">#</th>
+                        <th style="width: 16%;">Timestamp</th>
+                        <th style="width: 12%;">Routeur</th>
+                        <th style="width: 12%;">Badge Code</th>
+                        <th style="width: 26%;">Badge ID</th>
+                        <th style="width: 10%;">RSSI</th>
+                        <th style="width: 16%;">Qualité</th>
+                    </tr>
+                </thead>
+                <tbody id="frames-tbody">
+                    <tr>
+                        <td colspan="7" class="no-data">En attente de trames BLE...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let frames = [];
+        let frameCount = 0;
+        let uniqueBadges = new Set();
+        let autoscroll = true;
+        let startTime = Date.now();
+
+        // WebSocket events
+        socket.on('connect', () => {
+            document.getElementById('status').classList.remove('disconnected');
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('status').classList.add('disconnected');
+            console.log('Disconnected from server');
+        });
+
+        socket.on('ble_frame', (data) => {
+            addFrame(data);
+        });
+
+        function addFrame(data) {
+            frameCount++;
+
+            const frame = {
+                id: frameCount,
+                timestamp: data.timestamp || new Date().toISOString(),
+                router: data.router || 'Unknown',
+                code: data.code || '???',
+                badge_id: data.badge_addr || 'Unknown',
+                rssi: data.rssi || 0
+            };
+
+            frames.unshift(frame);
+            uniqueBadges.add(frame.badge_id);
+
+            // Garder max 1000 trames
+            if (frames.length > 1000) {
+                frames.pop();
+            }
+
+            updateTable();
+            updateStats();
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('frames-tbody');
+
+            if (frames.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucune trame reçue</td></tr>';
+                return;
+            }
+
+            const filterRouter = document.getElementById('filter-router').value.toLowerCase();
+            const filterCode = document.getElementById('filter-code').value.toLowerCase();
+            const filterBadge = document.getElementById('filter-badge').value.toLowerCase();
+
+            const filteredFrames = frames.filter(f => {
+                return (!filterRouter || f.router.toLowerCase().includes(filterRouter)) &&
+                       (!filterCode || f.code.toLowerCase().includes(filterCode)) &&
+                       (!filterBadge || f.badge_id.toLowerCase().includes(filterBadge));
+            });
+
+            let html = '';
+            filteredFrames.forEach((frame, index) => {
+                const rssiClass = frame.rssi >= -50 ? 'good' : (frame.rssi >= -70 ? 'medium' : 'poor');
+                const quality = frame.rssi >= -50 ? 'Excellent' : (frame.rssi >= -70 ? 'Bon' : 'Faible');
+
+                const date = new Date(frame.timestamp);
+                const timeStr = date.toLocaleTimeString('fr-FR', { hour12: false }) + '.' +
+                               String(date.getMilliseconds()).padStart(3, '0');
+
+                html += `
+                    <tr class="${index === 0 ? 'new-entry' : ''}">
+                        <td>${frame.id}</td>
+                        <td class="timestamp">${timeStr}</td>
+                        <td class="router">${frame.router}</td>
+                        <td class="code">${frame.code}</td>
+                        <td class="badge-id">${frame.badge_id}</td>
+                        <td class="rssi ${rssiClass}">${frame.rssi} dBm</td>
+                        <td>${quality}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+
+            // Auto-scroll
+            if (autoscroll) {
+                tbody.scrollTop = 0;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total').textContent = frameCount;
+            document.getElementById('stat-badges').textContent = uniqueBadges.size;
+
+            // Calculate rate (frames/min)
+            const elapsedMin = (Date.now() - startTime) / 60000;
+            const rate = elapsedMin > 0 ? Math.round(frameCount / elapsedMin) : 0;
+            document.getElementById('stat-rate').textContent = rate;
+        }
+
+        function clearFrames() {
+            if (confirm('Effacer toutes les trames ?')) {
+                frames = [];
+                frameCount = 0;
+                uniqueBadges.clear();
+                startTime = Date.now();
+                updateTable();
+                updateStats();
+            }
+        }
+
+        function filterTable() {
+            updateTable();
+        }
+
+        function toggleAutoscroll() {
+            autoscroll = !autoscroll;
+            const btn = document.getElementById('autoscroll-btn');
+            btn.textContent = autoscroll ? '📜 Auto-scroll: ON' : '📜 Auto-scroll: OFF';
+            btn.style.background = autoscroll ? '#0e639c' : '#858585';
+        }
+
+        function exportCSV() {
+            let csv = 'ID,Timestamp,Routeur,Code,Badge ID,RSSI\n';
+            frames.forEach(f => {
+                csv += `${f.id},"${f.timestamp}","${f.router}","${f.code}","${f.badge_id}",${f.rssi}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ble_debug_${Date.now()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Update stats every second
+        setInterval(updateStats, 1000);
+    </script>
+</body>
+</html>

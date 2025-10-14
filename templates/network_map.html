@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenThread Network Map</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+
+        .stat-item strong {
+            display: block;
+            font-size: 1.5em;
+            margin-top: 5px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            height: calc(100vh - 200px);
+        }
+
+        .graph-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        #network-graph {
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+        }
+
+        .controls button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .controls button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel h2 {
+            font-size: 1.3em;
+            color: #667eea;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .node-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .node-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .node-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .node-item.leader {
+            border-left-color: #ffd700;
+        }
+
+        .node-item.router {
+            border-left-color: #28a745;
+        }
+
+        .node-item.child {
+            border-left-color: #17a2b8;
+        }
+
+        .node-item .role {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 0.9em;
+        }
+
+        .node-item .rloc {
+            font-family: monospace;
+            color: #666;
+            font-size: 0.85em;
+        }
+
+        .node-details {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .detail-row {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .detail-row label {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .detail-row value {
+            color: #495057;
+            font-family: monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #666;
+        }
+
+        .legend-color.leader {
+            background: #ffd700;
+        }
+
+        .legend-color.router {
+            background: #90ee90;
+        }
+
+        .legend-color.child {
+            background: #87ceeb;
+        }
+
+        .legend-color.disabled {
+            background: #808080;
+        }
+
+        .legend-color.badge {
+            background: #FF69B4;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        @keyframes badge-flash {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 0.6;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .badge-flash {
+            animation: badge-flash 0.5s ease-out;
+        }
+
+        .updating {
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+            margin-left: 10px;
+        }
+
+        .status-indicator.disconnected {
+            background: #dc3545;
+        }
+
+        .rssi-gradient {
+            width: 100%;
+            height: 30px;
+            background: linear-gradient(to right,
+                #FF0000 0%, #FF2000 6.25%, #FF4000 12.5%, #FF6000 18.75%,
+                #FF8000 25%, #FFA000 31.25%, #FFC000 37.5%, #FFE000 43.75%,
+                #FFFF00 50%, #E0FF00 56.25%, #C0FF00 62.5%, #A0FF00 68.75%,
+                #80FF00 75%, #60FF00 81.25%, #40FF00 87.5%, #00FF00 93.75%);
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #666;
+        }
+
+        .rssi-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .rssi-scale {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .rssi-scale-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+        }
+
+        .rssi-scale-color {
+            width: 40px;
+            height: 15px;
+            border-radius: 3px;
+            border: 1px solid #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌐 OpenThread Network Map
+                <span class="status-indicator" id="status"></span>
+            </h1>
+            <div class="stats" id="stats">
+                <div class="stat-item">
+                    <div>Total Nodes</div>
+                    <strong id="stat-total">0</strong>
+                </div>
+                <div class="stat-item">
+                    <div>Leaders</div>
+                    <strong id="stat-leaders">0</strong>
+                </div>
+                <div class="stat-item">
+                    <div>Routers</div>
+                    <strong id="stat-routers">0</strong>
+                </div>
+                <div class="stat-item">
+                    <div>End Devices</div>
+                    <strong id="stat-children">0</strong>
+                </div>
+                <div class="stat-item">
+                    <div>Network</div>
+                    <strong id="stat-network">-</strong>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="graph-container">
+                <div class="controls">
+                    <button onclick="refreshTopology()">🔄 Refresh</button>
+                    <button onclick="fitNetwork()">🎯 Fit</button>
+                    <button onclick="exportTopology()">💾 Export</button>
+                    <button id="toggle-physics-btn" onclick="togglePhysics()">🔒 Verrouiller</button>
+                    <button onclick="resetPositions()">🔄 Reset Positions</button>
+                </div>
+                <div id="network-graph"></div>
+            </div>
+
+            <div class="sidebar">
+                <div class="panel">
+                    <h2>📊 Nodes</h2>
+                    <div class="node-list" id="node-list"></div>
+                </div>
+
+                <div class="panel">
+                    <h2>🔍 Node Details</h2>
+                    <div id="node-details">
+                        <p style="text-align: center; color: #999; padding: 20px;">
+                            Sélectionnez un nœud pour voir les détails
+                        </p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>📍 Badges Detected</h2>
+                    <div id="badge-list">
+                        <p style="text-align: center; color: #999; padding: 20px;">
+                            Aucun badge détecté
+                        </p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>📖 Legend</h2>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color leader"></div>
+                            <span>Leader</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color router"></div>
+                            <span>Router</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color child"></div>
+                            <span>End Device</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color disabled"></div>
+                            <span>Disabled</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color badge"></div>
+                            <span>Badge</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>📶 Signal Quality</h2>
+                    <div class="rssi-gradient"></div>
+                    <div class="rssi-labels">
+                        <span>-100 dBm</span>
+                        <span>-60 dBm</span>
+                        <span>-20 dBm</span>
+                    </div>
+                    <div class="rssi-scale">
+                        <div class="rssi-scale-item">
+                            <div class="rssi-scale-color" style="background: #FF0000;"></div>
+                            <span>Faible</span>
+                        </div>
+                        <div class="rssi-scale-item">
+                            <div class="rssi-scale-color" style="background: #FFA000;"></div>
+                            <span>Moyen</span>
+                        </div>
+                        <div class="rssi-scale-item">
+                            <div class="rssi-scale-color" style="background: #FFFF00;"></div>
+                            <span>Bon</span>
+                        </div>
+                        <div class="rssi-scale-item">
+                            <div class="rssi-scale-color" style="background: #00FF00;"></div>
+                            <span>Excellent</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Connexion WebSocket
+        const socket = io();
+        let network = null;
+        let nodes = new vis.DataSet();
+        let edges = new vis.DataSet();
+        let topologyData = null;
+
+        // Badge tracking
+        let badgeData = {};  // {badge_addr: {code, x, y, confidence, rssi_values, timestamp}}
+
+        // Fonction pour convertir RSSI en couleur (dégradé 16 couleurs)
+        function getRssiColor(rssi) {
+            // RSSI range: -100 dBm (worst) to -20 dBm (best)
+            // 16 color gradient from red → orange → yellow → green
+            const colors = [
+                '#FF0000', '#FF2000', '#FF4000', '#FF6000',  // -100 à -85: Rouge
+                '#FF8000', '#FFA000', '#FFC000', '#FFE000',  // -85 à -70: Orange
+                '#FFFF00', '#E0FF00', '#C0FF00', '#A0FF00',  // -70 à -55: Jaune
+                '#80FF00', '#60FF00', '#40FF00', '#00FF00'   // -55 à -20: Vert
+            ];
+
+            // Map RSSI (-100 to -20) to color index (0 to 15)
+            const index = Math.floor((rssi + 100) * 15 / 80);
+            return colors[Math.max(0, Math.min(15, index))];
+        }
+
+        // Fonction pour convertir RSSI en largeur de trait
+        function getRssiWidth(rssi) {
+            // RSSI -100 → width 1, RSSI -20 → width 5
+            return Math.max(1, Math.min(5, 1 + (rssi + 100) * 4 / 80));
+        }
+
+        // Fonction pour obtenir le texte de qualité du signal
+        function getRssiQuality(rssi) {
+            if (rssi > -50) return 'Excellent';
+            if (rssi > -70) return 'Bon';
+            if (rssi > -85) return 'Moyen';
+            return 'Faible';
+        }
+
+        // Gestion de la sauvegarde des positions
+        const POSITIONS_KEY = 'openthread_node_positions';
+        let physicsEnabled = true;
+
+        function saveNodePositions() {
+            const positions = {};
+            nodes.forEach(node => {
+                const nodePosition = network.getPositions([node.id])[node.id];
+                if (nodePosition) {
+                    // Only save router/leader positions, not badges
+                    if (!node.id.startsWith('badge_')) {
+                        positions[node.id] = {
+                            x: nodePosition.x,
+                            y: nodePosition.y
+                        };
+                    }
+                }
+            });
+            localStorage.setItem(POSITIONS_KEY, JSON.stringify(positions));
+            console.log('💾 Positions sauvegardées:', Object.keys(positions).length, 'nœuds');
+
+            // Sync positions to server for triangulation
+            syncPositionsToServer(positions);
+        }
+
+        function syncPositionsToServer(positions) {
+            fetch('/api/node_positions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(positions)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Positions synced to server');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Failed to sync positions:', error);
+            });
+        }
+
+        function loadNodePositions() {
+            const saved = localStorage.getItem(POSITIONS_KEY);
+            if (saved) {
+                try {
+                    return JSON.parse(saved);
+                } catch (e) {
+                    console.error('Erreur lecture positions:', e);
+                    return {};
+                }
+            }
+            return {};
+        }
+
+        function clearNodePositions() {
+            localStorage.removeItem(POSITIONS_KEY);
+            console.log('🗑️ Positions supprimées');
+        }
+
+        function togglePhysics() {
+            physicsEnabled = !physicsEnabled;
+            network.setOptions({ physics: { enabled: physicsEnabled } });
+            const btn = document.getElementById('toggle-physics-btn');
+            if (btn) {
+                btn.textContent = physicsEnabled ? '🔒 Verrouiller' : '🔓 Déverrouiller';
+                btn.style.background = physicsEnabled ? '#667eea' : '#28a745';
+            }
+            console.log('⚙️ Physique:', physicsEnabled ? 'activée' : 'désactivée');
+        }
+
+        // Initialisation du graphe
+        function initNetwork() {
+            const container = document.getElementById('network-graph');
+            const data = {
+                nodes: nodes,
+                edges: edges
+            };
+
+            const options = {
+                nodes: {
+                    shape: 'dot',
+                    size: 30,
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    borderWidth: 2,
+                    shadow: true
+                },
+                edges: {
+                    width: 2,
+                    shadow: true,
+                    smooth: {
+                        type: 'continuous'
+                    }
+                },
+                physics: {
+                    enabled: true,
+                    stabilization: {
+                        enabled: true,
+                        iterations: 200
+                    },
+                    barnesHut: {
+                        gravitationalConstant: -8000,
+                        springConstant: 0.04,
+                        springLength: 150
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 200,
+                    dragNodes: true,
+                    dragView: true,
+                    zoomView: true
+                },
+                manipulation: {
+                    enabled: false
+                }
+            };
+
+            network = new vis.Network(container, data, options);
+
+            // Désactiver la physique après stabilisation pour permettre le placement manuel
+            network.once('stabilizationIterationsDone', function() {
+                network.setOptions({ physics: false });
+                physicsEnabled = false;
+                const btn = document.getElementById('toggle-physics-btn');
+                if (btn) {
+                    btn.textContent = '🔓 Déverrouiller';
+                    btn.style.background = '#28a745';
+                }
+                console.log('✅ Stabilisation terminée - Physique désactivée');
+            });
+
+            // Event: clic sur un nœud
+            network.on('selectNode', function(params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    showNodeDetails(nodeId);
+                }
+            });
+
+            // Event: nœud déplacé - sauvegarder la position
+            network.on('dragEnd', function(params) {
+                if (params.nodes.length > 0) {
+                    saveNodePositions();
+                }
+            });
+
+            // Event: double-clic pour centrer sur un nœud
+            network.on('doubleClick', function(params) {
+                if (params.nodes.length > 0) {
+                    network.focus(params.nodes[0], {
+                        scale: 1.5,
+                        animation: {
+                            duration: 500,
+                            easingFunction: 'easeInOutQuad'
+                        }
+                    });
+                }
+            });
+        }
+
+        // Charger la topologie
+        async function loadTopology() {
+            try {
+                const response = await fetch('/api/topology');
+                const data = await response.json();
+                topologyData = data;
+                updateGraph(data);
+                updateStats(data);
+                updateNodeList(data);
+            } catch (error) {
+                console.error('Error loading topology:', error);
+            }
+        }
+
+        // Mettre à jour le graphe
+        function updateGraph(data) {
+            // IMPORTANT: Sauvegarder les badges avant de tout effacer
+            const existingBadges = [];
+            nodes.forEach(node => {
+                if (node.id.startsWith('badge_')) {
+                    existingBadges.push(node);
+                }
+            });
+
+            nodes.clear();
+            edges.clear();
+
+            const nodeData = data.nodes || [];
+
+            // Couleurs par rôle
+            const roleColors = {
+                'leader': '#FFD700',
+                'router': '#90EE90',
+                'child': '#87CEEB',
+                'disabled': '#808080',
+                'detached': '#FFA500'
+            };
+
+            // Charger les positions sauvegardées
+            const savedPositions = loadNodePositions();
+            const hasPositions = Object.keys(savedPositions).length > 0;
+
+            // Si on a des positions sauvegardées, désactiver la physique immédiatement
+            if (hasPositions && network) {
+                network.setOptions({ physics: false });
+                physicsEnabled = false;
+                const btn = document.getElementById('toggle-physics-btn');
+                if (btn) {
+                    btn.textContent = '🔓 Déverrouiller';
+                    btn.style.background = '#28a745';
+                }
+            }
+
+            // Ajouter les nœuds
+            nodeData.forEach(node => {
+                // Créer le label avec le nom, le rôle et la distance en sauts
+                let nodeLabel;
+                const hopInfo = node.hop_distance !== null && node.hop_distance !== undefined
+                    ? `${node.hop_distance} hop${node.hop_distance > 1 ? 's' : ''}`
+                    : '';
+
+                if (node.name) {
+                    nodeLabel = hopInfo ? `${node.name}\n${node.role}\n${hopInfo}` : `${node.name}\n${node.role}`;
+                } else {
+                    nodeLabel = hopInfo ? `${node.rloc16}\n${node.role}\n${hopInfo}` : `${node.rloc16}\n${node.role}`;
+                }
+
+                const tooltipTitle = node.name ?
+                    `<b>${node.name}</b><br>RLOC16: ${node.rloc16}<br>Role: ${node.role}<br>IPv6: ${node.ipv6}${hopInfo ? '<br>Distance: ' + hopInfo : ''}` :
+                    `<b>${node.rloc16}</b><br>Role: ${node.role}<br>IPv6: ${node.ipv6}${hopInfo ? '<br>Distance: ' + hopInfo : ''}`;
+
+                const nodeConfig = {
+                    id: node.rloc16,
+                    label: nodeLabel,
+                    color: {
+                        background: roleColors[node.role] || '#CCCCCC',
+                        border: '#666666'
+                    },
+                    title: tooltipTitle
+                };
+
+                // Appliquer la position sauvegardée si elle existe
+                if (savedPositions[node.rloc16]) {
+                    nodeConfig.x = savedPositions[node.rloc16].x;
+                    nodeConfig.y = savedPositions[node.rloc16].y;
+                    nodeConfig.fixed = { x: false, y: false };  // Permet le déplacement manuel
+                }
+
+                nodes.add(nodeConfig);
+            });
+
+            // Ajouter les connexions (parent-child)
+            nodeData.forEach(node => {
+                if (node.parent_rloc16 && node.parent_rssi !== null && node.parent_rssi !== undefined) {
+                    const rssi = node.parent_rssi;
+                    const color = getRssiColor(rssi);
+                    const width = getRssiWidth(rssi);
+                    const quality = getRssiQuality(rssi);
+
+                    edges.add({
+                        from: node.parent_rloc16,
+                        to: node.rloc16,
+                        color: color,
+                        width: width,
+                        title: `Parent-Child<br>RSSI: ${rssi} dBm (${quality})`,
+                        arrows: {
+                            to: {
+                                enabled: true,
+                                scaleFactor: 0.5
+                            }
+                        }
+                    });
+                } else if (node.parent_rloc16) {
+                    // Fallback si pas de RSSI disponible
+                    edges.add({
+                        from: node.parent_rloc16,
+                        to: node.rloc16,
+                        color: '#0000FF',
+                        width: 3,
+                        title: 'Parent-Child',
+                        arrows: {
+                            to: {
+                                enabled: true,
+                                scaleFactor: 0.5
+                            }
+                        }
+                    });
+                }
+
+                // Ajouter les connexions voisins (pointillées)
+                if (node.neighbors) {
+                    node.neighbors.forEach(neighbor => {
+                        // Éviter les doublons
+                        const edgeId = [node.rloc16, neighbor.rloc16].sort().join('-');
+                        if (!edges.get(edgeId)) {
+                            const rssi = neighbor.rssi || 0;
+                            const color = getRssiColor(rssi);
+                            const width = getRssiWidth(rssi) * 0.6;  // Plus fin que parent-child
+                            const quality = getRssiQuality(rssi);
+
+                            edges.add({
+                                id: edgeId,
+                                from: node.rloc16,
+                                to: neighbor.rloc16,
+                                color: {
+                                    color: color,
+                                    opacity: 0.7
+                                },
+                                dashes: true,
+                                width: width,
+                                title: `Neighbor<br>RSSI: ${rssi} dBm (${quality})`
+                            });
+                        }
+                    });
+                }
+            });
+
+            // IMPORTANT: Restaurer les badges après avoir reconstruit la topologie
+            if (existingBadges.length > 0) {
+                console.log(`🔄 Restauration de ${existingBadges.length} badges après refresh topologie`);
+                existingBadges.forEach(badge => {
+                    nodes.add(badge);
+                });
+            }
+        }
+
+        // Mettre à jour les statistiques
+        function updateStats(data) {
+            const stats = data.statistics || {};
+            document.getElementById('stat-total').textContent = stats.total_nodes || 0;
+            document.getElementById('stat-leaders').textContent = stats.leaders || 0;
+            document.getElementById('stat-routers').textContent = stats.routers || 0;
+            document.getElementById('stat-children').textContent = stats.children || 0;
+            document.getElementById('stat-network').textContent = stats.network_name || '-';
+        }
+
+        // Mettre à jour la liste des nœuds
+        function updateNodeList(data) {
+            const nodeListDiv = document.getElementById('node-list');
+            nodeListDiv.innerHTML = '';
+
+            const nodeData = data.nodes || [];
+            nodeData.forEach(node => {
+                const div = document.createElement('div');
+                div.className = `node-item ${node.role}`;
+                div.onclick = () => showNodeDetails(node.rloc16);
+
+                const nodeName = node.name ? node.name : node.rloc16;
+                const nodeSubtitle = node.name ? node.rloc16 : '';
+
+                div.innerHTML = `
+                    <div class="role">${node.role.toUpperCase()}</div>
+                    <div class="rloc">${nodeName}</div>
+                    ${nodeSubtitle ? `<div class="rloc" style="font-size: 0.75em; color: #999;">${nodeSubtitle}</div>` : ''}
+                `;
+                nodeListDiv.appendChild(div);
+            });
+        }
+
+        // Afficher les détails d'un nœud
+        function showNodeDetails(rloc16) {
+            if (!topologyData) return;
+
+            const node = topologyData.nodes.find(n => n.rloc16 === rloc16);
+            if (!node) return;
+
+            const detailsDiv = document.getElementById('node-details');
+            detailsDiv.innerHTML = `
+                ${node.name ? `
+                <div class="detail-row">
+                    <label>Name:</label>
+                    <value>${node.name}</value>
+                </div>
+                ` : ''}
+                <div class="detail-row">
+                    <label>RLOC16:</label>
+                    <value>${node.rloc16}</value>
+                </div>
+                <div class="detail-row">
+                    <label>Role:</label>
+                    <value>${node.role}</value>
+                </div>
+                <div class="detail-row">
+                    <label>IPv6:</label>
+                    <value>${node.ipv6}</value>
+                </div>
+                <div class="detail-row">
+                    <label>ExtAddr:</label>
+                    <value>${node.ext_addr}</value>
+                </div>
+                ${node.parent_rloc16 ? `
+                <div class="detail-row">
+                    <label>Parent:</label>
+                    <value>${node.parent_rloc16}</value>
+                </div>
+                ${node.parent_rssi !== null && node.parent_rssi !== undefined ? `
+                <div class="detail-row">
+                    <label>Parent RSSI:</label>
+                    <value style="color: ${getRssiColor(node.parent_rssi)}; font-weight: bold;">
+                        ${node.parent_rssi} dBm (${getRssiQuality(node.parent_rssi)})
+                    </value>
+                </div>
+                ` : ''}
+                ` : ''}
+                <div class="detail-row">
+                    <label>Children:</label>
+                    <value>${node.children.length}</value>
+                </div>
+                <div class="detail-row">
+                    <label>Neighbors:</label>
+                    <value>${node.neighbors.length}</value>
+                </div>
+                ${node.link_quality_in ? `
+                <div class="detail-row">
+                    <label>LQI In:</label>
+                    <value>${node.link_quality_in}</value>
+                </div>
+                ` : ''}
+                ${node.link_quality_out ? `
+                <div class="detail-row">
+                    <label>LQI Out:</label>
+                    <value>${node.link_quality_out}</value>
+                </div>
+                ` : ''}
+            `;
+
+            // Mettre en surbrillance le nœud
+            network.selectNodes([rloc16]);
+            network.focus(rloc16, {
+                scale: 1.5,
+                animation: {
+                    duration: 500,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+
+        // Rafraîchir la topologie
+        function refreshTopology() {
+            document.getElementById('status').classList.add('updating');
+            fetch('/api/refresh_topology', {method: 'POST'})
+                .then(() => {
+                    setTimeout(() => {
+                        loadTopology();
+                        document.getElementById('status').classList.remove('updating');
+                    }, 2000);
+                })
+                .catch(error => {
+                    console.error('Error refreshing:', error);
+                    document.getElementById('status').classList.remove('updating');
+                });
+        }
+
+        // Centrer le réseau
+        function fitNetwork() {
+            if (network) {
+                network.fit({
+                    animation: {
+                        duration: 500,
+                        easingFunction: 'easeInOutQuad'
+                    }
+                });
+            }
+        }
+
+        // Exporter la topologie
+        function exportTopology() {
+            if (topologyData) {
+                const dataStr = "data:text/json;charset=utf-8," +
+                    encodeURIComponent(JSON.stringify(topologyData, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", "topology.json");
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            }
+        }
+
+        // Réinitialiser les positions des nœuds
+        function resetPositions() {
+            if (confirm('Réinitialiser toutes les positions des nœuds ?')) {
+                clearNodePositions();
+                // Activer temporairement la physique pour repositionner automatiquement
+                network.setOptions({ physics: { enabled: true } });
+                physicsEnabled = true;
+                const btn = document.getElementById('toggle-physics-btn');
+                if (btn) {
+                    btn.textContent = '🔒 Verrouiller';
+                    btn.style.background = '#667eea';
+                }
+                // Désactiver la physique après stabilisation
+                setTimeout(() => {
+                    network.once('stabilizationIterationsDone', function() {
+                        network.setOptions({ physics: false });
+                        physicsEnabled = false;
+                        if (btn) {
+                            btn.textContent = '🔓 Déverrouiller';
+                            btn.style.background = '#28a745';
+                        }
+                    });
+                }, 100);
+                console.log('🔄 Positions réinitialisées');
+            }
+        }
+
+        // Badge position handling
+        function updateBadgePosition(data) {
+            const badgeId = `badge_${data.badge_addr}`;
+            const now = Date.now();
+
+            // Store badge data
+            badgeData[data.badge_addr] = {
+                code: data.code,
+                x: data.x,
+                y: data.y,
+                confidence: data.confidence,
+                rssi_values: data.rssi_values || {},
+                nb_routers: data.nb_routers || 0,
+                timestamp: now
+            };
+
+            // Check if badge node already exists
+            const existingBadge = nodes.get(badgeId);
+
+            if (existingBadge) {
+                // Update existing badge with smooth animation
+                const currentPos = network.getPositions([badgeId])[badgeId];
+                if (currentPos) {
+                    // Smooth move using vis-network's moveNode with animation
+                    network.moveNode(badgeId, data.x, data.y);
+                }
+
+                // Update badge label and color based on confidence
+                const confidenceColor = data.confidence >= 75 ? '#00FF00' :
+                                       data.confidence >= 50 ? '#FFD700' : '#FF8C00';
+
+                nodes.update({
+                    id: badgeId,
+                    label: `${data.code}\n${data.confidence}%`,
+                    color: {
+                        background: '#FF69B4',
+                        border: confidenceColor
+                    },
+                    borderWidth: 3,
+                    title: `Badge: ${data.code}<br>` +
+                           `Addr: ${data.badge_addr}<br>` +
+                           `Confidence: ${data.confidence}%<br>` +
+                           `Routers: ${data.nb_routers}`
+                });
+
+                // Trigger flash animation
+                triggerBadgeFlash(badgeId);
+            } else {
+                // Create new badge node
+                const confidenceColor = data.confidence >= 75 ? '#00FF00' :
+                                       data.confidence >= 50 ? '#FFD700' : '#FF8C00';
+
+                nodes.add({
+                    id: badgeId,
+                    label: `${data.code}\n${data.confidence}%`,
+                    x: data.x,
+                    y: data.y,
+                    shape: 'diamond',
+                    size: 25,
+                    color: {
+                        background: '#FF69B4',
+                        border: confidenceColor
+                    },
+                    borderWidth: 3,
+                    font: {
+                        size: 12,
+                        color: '#000000',
+                        bold: true
+                    },
+                    title: `Badge: ${data.code}<br>` +
+                           `Addr: ${data.badge_addr}<br>` +
+                           `Confidence: ${data.confidence}%<br>` +
+                           `Routers: ${data.nb_routers}`,
+                    fixed: false,
+                    physics: false  // Badges don't participate in physics
+                });
+
+                console.log(`📍 New badge detected: ${data.code} @ (${data.x.toFixed(1)}, ${data.y.toFixed(1)})`);
+
+                // Trigger flash animation for new badge
+                setTimeout(() => triggerBadgeFlash(badgeId), 100);
+            }
+
+            // Update badge list panel
+            updateBadgeList();
+        }
+
+        function updateBadgeList() {
+            const badgeListDiv = document.getElementById('badge-list');
+            const now = Date.now();
+
+            // Show ALL badges (no filtering, they persist forever)
+            const allBadges = Object.entries(badgeData);
+
+            if (allBadges.length === 0) {
+                badgeListDiv.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Aucun badge détecté</p>';
+                return;
+            }
+
+            // Build badge list HTML
+            let html = '';
+            allBadges.forEach(([addr, data]) => {
+                const ageSeconds = Math.floor((now - data.timestamp) / 1000);
+                const confidenceColor = data.confidence >= 75 ? '#00FF00' :
+                                       data.confidence >= 50 ? '#FFD700' : '#FF8C00';
+
+                // Visual indicator for age (recent vs stale)
+                const isRecent = ageSeconds < 10;
+                const ageColor = isRecent ? '#28a745' : (ageSeconds < 30 ? '#FFA500' : '#999');
+                const ageLabel = isRecent ? `Vu il y a ${ageSeconds}s` :
+                                 ageSeconds < 60 ? `Vu il y a ${ageSeconds}s ⏳` :
+                                 `Vu il y a ${Math.floor(ageSeconds/60)}min ⏳`;
+
+                html += `
+                    <div class="node-item" style="border-left-color: #FF69B4; opacity: ${isRecent ? 1 : 0.7};">
+                        <div class="role" style="color: #FF69B4;">BADGE ${data.code.toUpperCase()}</div>
+                        <div class="rloc" style="font-size: 0.75em;">${addr}</div>
+                        <div style="margin-top: 5px; font-size: 0.85em;">
+                            <div style="color: ${confidenceColor}; font-weight: bold;">
+                                Confiance: ${data.confidence}% (${data.nb_routers} routeurs)
+                            </div>
+                            <div style="color: #666; margin-top: 3px;">
+                                Position: (${data.x.toFixed(0)}, ${data.y.toFixed(0)})
+                            </div>
+                            <div style="color: ${ageColor}; font-size: 0.8em; font-weight: ${isRecent ? 'bold' : 'normal'};">
+                                ${ageLabel}
+                            </div>
+                `;
+
+                // Show RSSI values from each router
+                if (data.rssi_values && Object.keys(data.rssi_values).length > 0) {
+                    html += '<div style="margin-top: 5px; font-size: 0.8em; color: #666;">RSSI:';
+                    Object.entries(data.rssi_values).forEach(([router, rssi]) => {
+                        const rssiColor = getRssiColor(rssi);
+                        html += `<br><span style="color: ${rssiColor}; font-weight: bold;">${router}: ${rssi} dBm</span>`;
+                    });
+                    html += '</div>';
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            badgeListDiv.innerHTML = html;
+        }
+
+        // Trigger flash animation on badge update
+        function triggerBadgeFlash(badgeId) {
+            // Get the canvas and node position
+            const positions = network.getPositions([badgeId]);
+            if (!positions[badgeId]) return;
+
+            const pos = positions[badgeId];
+            const canvasPos = network.canvasToDOM({ x: pos.x, y: pos.y });
+
+            // Create temporary flash overlay on the badge
+            // We don't modify the node itself to avoid disappearance issues
+            const container = document.getElementById('network-graph');
+            const flash = document.createElement('div');
+            flash.style.position = 'absolute';
+            flash.style.left = (canvasPos.x - 20) + 'px';
+            flash.style.top = (canvasPos.y - 20) + 'px';
+            flash.style.width = '40px';
+            flash.style.height = '40px';
+            flash.style.borderRadius = '50%';
+            flash.style.background = 'rgba(255, 105, 180, 0.6)';
+            flash.style.pointerEvents = 'none';
+            flash.style.zIndex = '1000';
+            flash.className = 'badge-flash';
+
+            container.appendChild(flash);
+
+            // Remove after animation completes
+            setTimeout(() => {
+                if (flash.parentNode) {
+                    flash.parentNode.removeChild(flash);
+                }
+            }, 500);
+        }
+
+        // Update badge list (no visual changes to graph nodes)
+        function updateBadgeListPeriodically() {
+            // Only update the sidebar list, NEVER touch the graph nodes
+            updateBadgeList();
+        }
+
+        // Start periodic list update (never removes badges from graph)
+        setInterval(updateBadgeListPeriodically, 2000);
+
+        // WebSocket events
+        socket.on('connect', () => {
+            document.getElementById('status').classList.remove('disconnected');
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('status').classList.add('disconnected');
+            console.log('Disconnected from server');
+        });
+
+        socket.on('topology_update', (data) => {
+            console.log('Topology updated');
+            topologyData = data;
+            updateGraph(data);
+            updateStats(data);
+            updateNodeList(data);
+        });
+
+        socket.on('badge_position', (data) => {
+            console.log('📍 Badge position update:', data.code, '@', `(${data.x.toFixed(1)}, ${data.y.toFixed(1)})`,
+                        `confidence: ${data.confidence}%`);
+            updateBadgePosition(data);
+        });
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            initNetwork();
+            loadTopology();
+
+            // Sync initial positions to server
+            const savedPositions = loadNodePositions();
+            if (Object.keys(savedPositions).length > 0) {
+                syncPositionsToServer(savedPositions);
+            }
+
+            // Auto-refresh toutes les 30 secondes
+            setInterval(loadTopology, 30000);
+        });
+    </script>
+</body>
+</html>

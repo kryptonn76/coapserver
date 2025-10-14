@@ -1,0 +1,19 @@
+# Web framework
+Flask==3.0.0
+flask-socketio==5.3.5
+flask-cors==4.0.0
+
+# Environment variables
+python-dotenv==1.0.0
+
+# HTTP client
+requests==2.31.0
+
+# ThingsBoard (optional - for telemetry integration)
+tb-rest-client==1.9.6
+
+# WebSocket support
+python-socketio==5.10.0
+
+# Async support
+asyncio-mqtt==0.16.1

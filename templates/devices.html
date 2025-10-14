@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi des Devices - Localisation en temps réel</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .devices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .device-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .device-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .device-card.dalkia {
+            border-left: 5px solid #ff6b6b;
+        }
+        
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .device-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .device-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-recent {
+            background: #4caf50;
+        }
+        
+        .status-old {
+            background: #ff9800;
+        }
+        
+        .status-offline {
+            background: #f44336;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .location-info {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .location-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .location-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        
+        .location-time {
+            color: #999;
+            font-size: 0.85em;
+        }
+        
+        .no-location {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .badge-indicator {
+            display: inline-block;
+            background: #ff6b6b;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        
+        .update-flash {
+            animation: flash 0.5s;
+        }
+        
+        @keyframes flash {
+            0% { background: #fff3cd; }
+            100% { background: white; }
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .connection-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f44336;
+        }
+        
+        .connection-dot.connected {
+            background: #4caf50;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        
+        .filter-btn {
+            padding: 10px 20px;
+            background: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .filter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 Suivi des Devices - Localisation Temps Réel</h1>
+        
+        <div class="connection-status">
+            <div class="connection-dot" id="connectionDot"></div>
+            <span id="connectionText">Déconnecté</span>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalDevices">0</div>
+                <div class="stat-label">Total Devices</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeDevices">0</div>
+                <div class="stat-label">Avec Position</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="dalkiaDevices">0</div>
+                <div class="stat-label">Badges DALKIA</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="updateRate">0</div>
+                <div class="stat-label">Updates/min</div>
+            </div>
+        </div>
+        
+        <div class="filter-buttons">
+            <button class="filter-btn active" onclick="filterDevices('all')">Tous</button>
+            <button class="filter-btn" onclick="filterDevices('dalkia')">DALKIA uniquement</button>
+            <button class="filter-btn" onclick="filterDevices('active')">Avec position</button>
+        </div>
+        
+        <div class="devices-grid" id="devicesGrid">
+            <!-- Les cartes de devices seront ajoutées ici -->
+        </div>
+    </div>
+    
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // État global
+        let devices = {};
+        let socket = null;
+        let updateCount = 0;
+        let updateTimes = [];
+        let currentFilter = 'all';
+        
+        // Connexion WebSocket
+        function initWebSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('WebSocket connecté');
+                document.getElementById('connectionDot').classList.add('connected');
+                document.getElementById('connectionText').textContent = 'Connecté';
+                
+                // Demander la liste des devices
+                socket.emit('request_devices');
+                
+                // Charger les devices via REST aussi
+                loadDevices();
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('WebSocket déconnecté');
+                document.getElementById('connectionDot').classList.remove('connected');
+                document.getElementById('connectionText').textContent = 'Déconnecté';
+            });
+            
+            socket.on('loc_code_update', (data) => {
+                console.log('Mise à jour loc_code:', data);
+                updateDeviceLocation(data.device, data.loc_code, data.timestamp);
+                
+                // Compter les updates pour le taux
+                updateCount++;
+                updateTimes.push(Date.now());
+                // Garder seulement les updates de la dernière minute
+                const oneMinuteAgo = Date.now() - 60000;
+                updateTimes = updateTimes.filter(t => t > oneMinuteAgo);
+                document.getElementById('updateRate').textContent = updateTimes.length;
+            });
+            
+            socket.on('devices_list', (data) => {
+                console.log('Liste des devices reçue:', data);
+                data.forEach(device => {
+                    if (!devices[device.name]) {
+                        devices[device.name] = device;
+                        createDeviceCard(device);
+                    }
+                    if (device.loc_code) {
+                        updateDeviceLocation(device.name, device.loc_code, new Date().toISOString());
+                    }
+                });
+                updateStats();
+            });
+        }
+        
+        // Charger les devices via REST API
+        async function loadDevices() {
+            try {
+                const response = await fetch('/api/devices');
+                const data = await response.json();
+                
+                data.forEach(device => {
+                    devices[device.name] = device;
+                    createDeviceCard(device);
+                });
+                
+                updateStats();
+                applyFilter();
+            } catch (error) {
+                console.error('Erreur chargement devices:', error);
+            }
+        }
+        
+        // Créer une carte de device
+        function createDeviceCard(device) {
+            const existingCard = document.getElementById(`device-${device.name}`);
+            if (existingCard) return;
+            
+            const card = document.createElement('div');
+            card.className = 'device-card';
+            card.id = `device-${device.name}`;
+            
+            if (device.is_dalkia || device.name.includes('DALKIA')) {
+                card.classList.add('dalkia');
+            }
+            
+            const statusClass = getStatusClass(device.age_seconds);
+            
+            card.innerHTML = `
+                <div class="device-header">
+                    <div class="device-name">
+                        ${device.name}
+                        ${device.is_dalkia || device.name.includes('DALKIA') ? '<span class="badge-indicator">BADGE</span>' : ''}
+                    </div>
+                    <div class="device-status ${statusClass}"></div>
+                </div>
+                <div class="location-info">
+                    <div class="location-label">Position actuelle</div>
+                    <div class="location-value" id="loc-${device.name}">
+                        ${device.loc_code || '<span class="no-location">Pas de position</span>'}
+                    </div>
+                    <div class="location-time" id="time-${device.name}">
+                        ${device.age_seconds ? formatAge(device.age_seconds) : ''}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('devicesGrid').appendChild(card);
+        }
+        
+        // Mettre à jour la localisation d'un device
+        function updateDeviceLocation(deviceName, locCode, timestamp) {
+            if (!devices[deviceName]) {
+                devices[deviceName] = { name: deviceName };
+                createDeviceCard(devices[deviceName]);
+            }
+            
+            devices[deviceName].loc_code = locCode;
+            devices[deviceName].timestamp = timestamp;
+            
+            const locElement = document.getElementById(`loc-${deviceName}`);
+            const timeElement = document.getElementById(`time-${deviceName}`);
+            const card = document.getElementById(`device-${deviceName}`);
+            
+            if (locElement) {
+                locElement.textContent = locCode;
+                card.classList.add('update-flash');
+                setTimeout(() => card.classList.remove('update-flash'), 500);
+            }
+            
+            if (timeElement) {
+                timeElement.textContent = 'À l\'instant';
+            }
+            
+            updateStats();
+        }
+        
+        // Obtenir la classe de statut selon l'âge
+        function getStatusClass(ageSeconds) {
+            if (!ageSeconds) return 'status-offline';
+            if (ageSeconds < 60) return 'status-recent';
+            if (ageSeconds < 300) return 'status-old';
+            return 'status-offline';
+        }
+        
+        // Formater l'âge en texte lisible
+        function formatAge(seconds) {
+            if (seconds < 60) return `Il y a ${seconds}s`;
+            if (seconds < 3600) return `Il y a ${Math.floor(seconds/60)}min`;
+            if (seconds < 86400) return `Il y a ${Math.floor(seconds/3600)}h`;
+            return `Il y a ${Math.floor(seconds/86400)}j`;
+        }
+        
+        // Mettre à jour les statistiques
+        function updateStats() {
+            const total = Object.keys(devices).length;
+            const withPosition = Object.values(devices).filter(d => d.loc_code).length;
+            const dalkia = Object.values(devices).filter(d => 
+                d.is_dalkia || d.name.includes('DALKIA')
+            ).length;
+            
+            document.getElementById('totalDevices').textContent = total;
+            document.getElementById('activeDevices').textContent = withPosition;
+            document.getElementById('dalkiaDevices').textContent = dalkia;
+        }
+        
+        // Filtrer les devices
+        function filterDevices(filter) {
+            currentFilter = filter;
+            
+            // Mettre à jour les boutons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            applyFilter();
+        }
+        
+        // Appliquer le filtre actuel
+        function applyFilter() {
+            const cards = document.querySelectorAll('.device-card');
+            
+            cards.forEach(card => {
+                const deviceName = card.id.replace('device-', '');
+                const device = devices[deviceName];
+                
+                let show = true;
+                
+                if (currentFilter === 'dalkia') {
+                    show = device && (device.is_dalkia || device.name.includes('DALKIA'));
+                } else if (currentFilter === 'active') {
+                    show = device && device.loc_code;
+                }
+                
+                card.style.display = show ? 'block' : 'none';
+            });
+        }
+        
+        // Mise à jour périodique des âges
+        setInterval(() => {
+            Object.values(devices).forEach(device => {
+                if (device.timestamp) {
+                    const age = Math.floor((Date.now() - new Date(device.timestamp).getTime()) / 1000);
+                    const timeElement = document.getElementById(`time-${device.name}`);
+                    if (timeElement) {
+                        timeElement.textContent = formatAge(age);
+                    }
+                }
+            });
+        }, 5000);
+        
+        // Initialisation
+        initWebSocket();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLE Beacon Tracking</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2em;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #10b981;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-left: auto;
+        }
+
+        .status.disconnected {
+            background: #ef4444;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            max-height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-wrapper {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h2 {
+            font-size: 1.5em;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        select, input {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 0.9em;
+        }
+
+        select option {
+            background: #764ba2;
+            color: white;
+        }
+
+        input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9fa;
+        }
+
+        th {
+            padding: 15px 20px;
+            text-align: left;
+            font-weight: 600;
+            color: #667eea;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        tbody tr.new-detection {
+            animation: highlight 1s ease-out;
+        }
+
+        @keyframes highlight {
+            from {
+                background: #dcfce7;
+            }
+            to {
+                background: white;
+            }
+        }
+
+        td {
+            padding: 15px 20px;
+            color: #333;
+        }
+
+        .device-cell {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .code-cell {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            display: inline-block;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .node-cell {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .rssi-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .rssi-bar {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .rssi-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .rssi-excellent { background: #10b981; }
+        .rssi-good { background: #3b82f6; }
+        .rssi-fair { background: #f59e0b; }
+        .rssi-poor { background: #ef4444; }
+
+        .timestamp-cell {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .sequence-cell {
+            font-weight: 600;
+            text-align: center;
+            padding: 4px 12px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .sequence-ok {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .sequence-nok {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .sequence-first {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .prev-code-cell {
+            font-family: 'Courier New', monospace;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .no-data {
+            padding: 60px;
+            text-align: center;
+            color: #999;
+            font-size: 1.2em;
+        }
+
+        .pagination {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pagination button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .pagination button:hover {
+            background: #764ba2;
+        }
+
+        .pagination button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .code-analysis {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .code-analysis h2 {
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+
+        .beacon-grids {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+        }
+
+        .beacon-device {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .beacon-device h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            font-family: 'Courier New', monospace;
+        }
+
+        .beacon-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .beacon-stat {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .beacon-stat .value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .beacon-stat .label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .code-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+
+        .code-box {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1.3em;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .code-box:hover {
+            transform: scale(1.05);
+        }
+
+        .code-box.detected-recent {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .code-box.detected-aging {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .code-box.missing {
+            background: #e5e7eb;
+            color: #9ca3af;
+            border: 2px dashed #d1d5db;
+        }
+
+        .code-box.sequence-error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            border: 2px solid #b91c1c;
+        }
+
+        .code-box .code-label {
+            font-size: 1.3em;
+        }
+
+        .code-box .code-time {
+            font-size: 0.5em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .code-box .code-count {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.2);
+            color: white;
+            font-size: 0.5em;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        .missing-codes {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #ef4444;
+        }
+
+        .missing-codes h4 {
+            color: #ef4444;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .missing-codes .missing-list {
+            color: #666;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+
+        .missing-codes .missing-list.none {
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                📡 BLE Beacon Tracking
+                <span id="status" class="status">Connecté</span>
+            </h1>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="total-detections">0</div>
+                <div class="stat-label">Détections totales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="unique-devices">0</div>
+                <div class="stat-label">Devices uniques</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="active-nodes">0</div>
+                <div class="stat-label">Nodes actifs</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #ef4444;">
+                <div class="stat-value" id="total-nok" style="color: #ef4444;">0</div>
+                <div class="stat-label">Total NOK</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #f59e0b;">
+                <div class="stat-value" id="nok-per-minute" style="color: #f59e0b;">0</div>
+                <div class="stat-label">NOK/min</div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button id="reset-nok-btn" style="padding: 12px 24px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1em; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); transition: background 0.3s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                🔄 Reset Compteurs NOK
+            </button>
+        </div>
+
+        <div class="code-analysis">
+            <h2>📊 Analyse des codes de balise</h2>
+            <div class="beacon-grids" id="beacon-grids">
+                <!-- Grilles dynamiques générées par JavaScript -->
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <h2>Historique des détections</h2>
+                <div class="filter-group">
+                    <select id="filter-device">
+                        <option value="">Tous les devices</option>
+                    </select>
+                    <select id="filter-node">
+                        <option value="">Tous les nodes</option>
+                    </select>
+                    <input type="text" id="filter-code" placeholder="Filtrer par code...">
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Device BLE</th>
+                            <th>Code Précédent</th>
+                            <th>Code Actuel</th>
+                            <th>Séquence</th>
+                            <th>Node Détecteur</th>
+                            <th>Signal (RSSI)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detections-table">
+                        <tr>
+                            <td colspan="7" class="no-data">
+                                Aucune détection pour le moment...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let detections = [];
+        let filteredDetections = [];
+        let nokCounter = {
+            total: 0,
+            lastMinute: [],
+            startTime: Date.now()
+        };
+        let processedDetections = new Set(); // Pour éviter de compter les NOK plusieurs fois
+        let deviceLastCode = new Map(); // Pour suivre le dernier code de chaque device
+
+        // Connexion WebSocket
+        socket.on('connect', () => {
+            document.getElementById('status').textContent = 'Connecté';
+            document.getElementById('status').classList.remove('disconnected');
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('status').textContent = 'Déconnecté';
+            document.getElementById('status').classList.add('disconnected');
+        });
+
+        // Recevoir les détections en temps réel
+        socket.on('ble_beacon', (data) => {
+            // Vérifier la séquence pour cette nouvelle détection
+            const detectionKey = `${data.device}_${data.timestamp}`;
+            if (!processedDetections.has(detectionKey)) {
+                processedDetections.add(detectionKey);
+
+                const lastCode = deviceLastCode.get(data.device);
+                const lastTime = deviceLastCode.get(`${data.device}_time`);
+                const currentTime = new Date(data.timestamp).getTime();
+                const timeDiff = lastTime ? (currentTime - lastTime) / 1000 : 0;
+
+                if (lastCode) {
+                    const sequenceCheck = checkSequence(data.code, lastCode, timeDiff);
+                    if (sequenceCheck.status === 'NOK') {
+                        // Compter chaque code manquant comme un NOK
+                        sequenceCheck.missedCodes.forEach(() => addNok());
+                    }
+                }
+                deviceLastCode.set(data.device, data.code);
+                deviceLastCode.set(`${data.device}_time`, currentTime);
+            }
+
+            detections.unshift(data);
+            if (detections.length > 200) {
+                detections.pop();
+            }
+            applyFilters();
+            updateStats();
+            updateCodeAnalysis();
+        });
+
+        // Charger l'historique initial
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/ble_history');
+                const newDetections = await response.json();
+
+                // Fusionner avec les détections existantes sans perdre les données
+                const existingIds = new Set(detections.map(d => `${d.device}_${d.timestamp}`));
+                const toAdd = newDetections.filter(d => !existingIds.has(`${d.device}_${d.timestamp}`));
+
+                detections = [...toAdd, ...detections].slice(0, 200);
+
+                // Initialiser deviceLastCode avec l'historique (trier par timestamp)
+                const sortedDetections = [...detections].sort((a, b) =>
+                    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                );
+
+                sortedDetections.forEach(d => {
+                    const detectionKey = `${d.device}_${d.timestamp}`;
+                    if (!processedDetections.has(detectionKey)) {
+                        processedDetections.add(detectionKey);
+
+                        const lastCode = deviceLastCode.get(d.device);
+                        const lastTime = deviceLastCode.get(`${d.device}_time`);
+                        const currentTime = new Date(d.timestamp).getTime();
+                        const timeDiff = lastTime ? (currentTime - lastTime) / 1000 : 0;
+
+                        if (lastCode) {
+                            const sequenceCheck = checkSequence(d.code, lastCode, timeDiff);
+                            if (sequenceCheck.status === 'NOK') {
+                                // Compter chaque code manquant comme un NOK
+                                sequenceCheck.missedCodes.forEach(() => addNok());
+                            }
+                        }
+                        deviceLastCode.set(d.device, d.code);
+                        deviceLastCode.set(`${d.device}_time`, currentTime);
+                    }
+                });
+
+                applyFilters();
+                updateStats();
+                updateFilterOptions();
+                updateCodeAnalysis();
+            } catch (error) {
+                console.error('Erreur chargement historique:', error);
+            }
+        }
+
+        // Appliquer les filtres
+        function applyFilters() {
+            const deviceFilter = document.getElementById('filter-device').value;
+            const nodeFilter = document.getElementById('filter-node').value;
+            const codeFilter = document.getElementById('filter-code').value.toLowerCase();
+
+            filteredDetections = detections.filter(d => {
+                if (deviceFilter && d.device !== deviceFilter) return false;
+                if (nodeFilter && d.node !== nodeFilter) return false;
+                if (codeFilter && !d.code.toLowerCase().includes(codeFilter)) return false;
+                return true;
+            });
+
+            renderTable();
+        }
+
+        // Mettre à jour les options de filtres (sans changer la sélection)
+        function updateFilterOptions() {
+            const devices = [...new Set(detections.map(d => d.device))].sort();
+            const nodes = [...new Set(detections.map(d => d.node))].sort();
+
+            const deviceSelect = document.getElementById('filter-device');
+            const nodeSelect = document.getElementById('filter-node');
+
+            // Sauvegarder les valeurs actuelles
+            const currentDevice = deviceSelect.value;
+            const currentNode = nodeSelect.value;
+
+            // Mettre à jour les options
+            deviceSelect.innerHTML = '<option value="">Tous les devices</option>' +
+                devices.map(d => `<option value="${d}">${d}</option>`).join('');
+
+            nodeSelect.innerHTML = '<option value="">Tous les nodes</option>' +
+                nodes.map(n => `<option value="${n}">${n}</option>`).join('');
+
+            // Restaurer les valeurs si elles existent toujours
+            if (devices.includes(currentDevice)) {
+                deviceSelect.value = currentDevice;
+            }
+            if (nodes.includes(currentNode)) {
+                nodeSelect.value = currentNode;
+            }
+        }
+
+        // Mettre à jour les statistiques
+        function updateStats() {
+            document.getElementById('total-detections').textContent = detections.length;
+            const uniqueDevices = new Set(detections.map(d => d.device));
+            document.getElementById('unique-devices').textContent = uniqueDevices.size;
+            const activeNodes = new Set(detections.map(d => d.node));
+            document.getElementById('active-nodes').textContent = activeNodes.size;
+
+            // Mettre à jour les stats NOK
+            updateNokStats();
+        }
+
+        // Mettre à jour les statistiques NOK
+        function updateNokStats() {
+            const now = Date.now();
+
+            // Nettoyer les NOK de plus d'une minute
+            nokCounter.lastMinute = nokCounter.lastMinute.filter(timestamp => (now - timestamp) < 60000);
+
+            // Afficher les stats
+            document.getElementById('total-nok').textContent = nokCounter.total;
+            document.getElementById('nok-per-minute').textContent = nokCounter.lastMinute.length;
+        }
+
+        // Ajouter un NOK
+        function addNok() {
+            const now = Date.now();
+            nokCounter.total++;
+            nokCounter.lastMinute.push(now);
+            updateNokStats();
+        }
+
+        // Reset des compteurs NOK
+        document.getElementById('reset-nok-btn').addEventListener('click', () => {
+            nokCounter.total = 0;
+            nokCounter.lastMinute = [];
+            nokCounter.startTime = Date.now();
+            processedDetections.clear();
+            deviceLastCode.clear();
+            updateNokStats();
+
+            // Recharger l'historique pour recalculer à partir de zéro
+            loadHistory();
+        });
+
+        // Calculer la qualité du signal RSSI
+        function getRssiQuality(rssi) {
+            if (rssi >= -50) return { class: 'rssi-excellent', width: 100, label: 'Excellent' };
+            if (rssi >= -60) return { class: 'rssi-good', width: 75, label: 'Bon' };
+            if (rssi >= -70) return { class: 'rssi-fair', width: 50, label: 'Moyen' };
+            return { class: 'rssi-poor', width: 25, label: 'Faible' };
+        }
+
+        // Formater le timestamp
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                day: '2-digit',
+                month: '2-digit'
+            });
+        }
+
+        // Vérifier la séquence de codes et compter les manquants
+        function checkSequence(currentCode, previousCode, timeDiff) {
+            if (!previousCode) {
+                return { status: 'FIRST', expected: '-', missedCodes: [] };
+            }
+
+            const currentNum = parseInt(currentCode.substring(2));
+            const previousNum = parseInt(previousCode.substring(2));
+            const prefix = currentCode.substring(0, 2);
+
+            // Si plus de 2 secondes, on peut confirmer les codes manquants
+            const missedCodes = [];
+            if (timeDiff >= 2) {
+                let expectedNum = (previousNum + 1) % 10;
+                let missed = 0;
+
+                // Lister tous les codes manquants entre previousCode et currentCode
+                while (expectedNum !== currentNum && missed < 10) {
+                    missedCodes.push(`${prefix}${expectedNum}`);
+                    expectedNum = (expectedNum + 1) % 10;
+                    missed++;
+                }
+
+                if (missedCodes.length > 0) {
+                    return {
+                        status: 'NOK',
+                        expected: missedCodes.join(', '),
+                        missedCodes: missedCodes
+                    };
+                }
+            }
+
+            // Séquence continue ou pas assez de temps pour confirmer
+            const expectedNum = (previousNum + 1) % 10;
+            if (currentNum === expectedNum) {
+                return { status: 'OK', expected: `${prefix}${expectedNum}`, missedCodes: [] };
+            } else {
+                return {
+                    status: 'WAIT',
+                    expected: `${prefix}${expectedNum}`,
+                    missedCodes: []
+                };
+            }
+        }
+
+        // Afficher le tableau avec analyse de séquence
+        function renderTable() {
+            const tbody = document.getElementById('detections-table');
+
+            if (filteredDetections.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucune détection correspondante</td></tr>';
+                return;
+            }
+
+            // Créer un map pour suivre le dernier code et timestamp de chaque device
+            const devicePreviousCode = new Map();
+            const devicePreviousTime = new Map();
+
+            // Trier par timestamp (plus ancien en premier pour suivre la séquence)
+            const sortedDetections = [...filteredDetections].reverse();
+
+            tbody.innerHTML = sortedDetections.map((d, index) => {
+                const quality = getRssiQuality(d.rssi);
+                const isNew = index === sortedDetections.length - 1 && detections[0] === d;
+
+                // Récupérer le code précédent et le temps pour ce device
+                const previousCode = devicePreviousCode.get(d.device);
+                const previousTime = devicePreviousTime.get(d.device);
+                const currentTime = new Date(d.timestamp).getTime();
+                const timeDiff = previousTime ? (currentTime - previousTime) / 1000 : 0;
+
+                const sequenceCheck = checkSequence(d.code, previousCode, timeDiff);
+
+                // Mettre à jour le code et timestamp précédent
+                devicePreviousCode.set(d.device, d.code);
+                devicePreviousTime.set(d.device, currentTime);
+
+                // Déterminer la classe CSS pour la séquence
+                let sequenceClass = 'sequence-first';
+                let sequenceText = 'FIRST';
+                if (sequenceCheck.status === 'OK') {
+                    sequenceClass = 'sequence-ok';
+                    sequenceText = '✓ OK';
+                } else if (sequenceCheck.status === 'NOK') {
+                    sequenceClass = 'sequence-nok';
+                    sequenceText = `✗ NOK (manquants: ${sequenceCheck.expected})`;
+                } else if (sequenceCheck.status === 'WAIT') {
+                    sequenceClass = 'sequence-first';
+                    sequenceText = '⏳ WAIT';
+                }
+
+                return `
+                    <tr class="${isNew ? 'new-detection' : ''}">
+                        <td class="timestamp-cell">${formatTimestamp(d.timestamp)}</td>
+                        <td class="device-cell">${d.device}</td>
+                        <td class="prev-code-cell">${previousCode || '-'}</td>
+                        <td><span class="code-cell">${d.code}</span></td>
+                        <td><span class="sequence-cell ${sequenceClass}">${sequenceText}</span></td>
+                        <td class="node-cell">${d.node}</td>
+                        <td>
+                            <div class="rssi-cell">
+                                <span style="min-width: 45px">${d.rssi} dBm</span>
+                                <div class="rssi-bar">
+                                    <div class="rssi-fill ${quality.class}" style="width: ${quality.width}%"></div>
+                                </div>
+                                <span style="min-width: 70px; font-size: 0.85em; color: #666">${quality.label}</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).reverse().join('');
+        }
+
+        // Analyse des codes de balise avec détection de séquence
+        function updateCodeAnalysis() {
+            const now = Date.now();
+            const deviceMap = new Map();
+
+            // Regrouper par device et analyser les séquences
+            const deviceDetections = new Map();
+
+            detections.forEach(d => {
+                if (!deviceDetections.has(d.device)) {
+                    deviceDetections.set(d.device, []);
+                }
+                deviceDetections.get(d.device).push({
+                    code: d.code,
+                    timestamp: new Date(d.timestamp).getTime()
+                });
+            });
+
+            const container = document.getElementById('beacon-grids');
+
+            // Analyser chaque device
+            deviceDetections.forEach((detectionList, device) => {
+                // Trier par timestamp (plus récent en premier)
+                detectionList.sort((a, b) => b.timestamp - a.timestamp);
+
+                // Déterminer le type de beacon
+                const beaconType = detectionList[0].code.substring(0, 2); // 'bl' ou 'cl'
+                const expectedCodes = Array.from({length: 10}, (_, i) => `${beaconType}${i}`);
+
+                // Analyser les cycles de rotation (dernier cycle complet)
+                const cycleStats = analyzeCycles(detectionList, beaconType, now);
+
+                // Stats du dernier cycle
+                const lastCycleDetected = cycleStats.lastCycle.size;
+                const lastCycleMissing = cycleStats.lastCycleMissingCodes;
+                const captureRate = cycleStats.slidingCaptureRate; // Taux glissant sur 100s
+                const missedCodes = cycleStats.missedCodes || new Set();
+
+                const deviceId = device.replace(/:/g, '-');
+
+                // Chercher ou créer le div du device
+                let deviceDiv = document.getElementById(`device-${deviceId}`);
+                if (!deviceDiv) {
+                    // Créer la carte du device (une seule fois)
+                    deviceDiv = document.createElement('div');
+                    deviceDiv.id = `device-${deviceId}`;
+                    deviceDiv.className = 'beacon-device';
+                    deviceDiv.innerHTML = `
+                        <h3>📱 ${device}</h3>
+                        <div class="beacon-stats">
+                            <div class="beacon-stat">
+                                <div class="value" id="cycle-detected-${deviceId}">0/10</div>
+                                <div class="label">Cycle actuel</div>
+                            </div>
+                            <div class="beacon-stat">
+                                <div class="value" id="capture-rate-${deviceId}">0%</div>
+                                <div class="label">Taux de capture (100s)</div>
+                            </div>
+                            <div class="beacon-stat">
+                                <div class="value" id="total-cycles-${deviceId}">0</div>
+                                <div class="label">Cycles détectés</div>
+                            </div>
+                        </div>
+                        <div class="code-grid" id="grid-${deviceId}"></div>
+                        <div class="missing-codes" id="missing-${deviceId}">
+                            <h4 id="missing-title-${deviceId}">🔄 Cycle en cours</h4>
+                            <div class="missing-list" id="missing-list-${deviceId}">En attente...</div>
+                        </div>
+                    `;
+                    container.appendChild(deviceDiv);
+                }
+
+                // Mettre à jour les stats (sans recréer l'élément)
+                document.getElementById(`cycle-detected-${deviceId}`).textContent = `${lastCycleDetected}/10`;
+                document.getElementById(`capture-rate-${deviceId}`).textContent = `${captureRate}%`;
+                document.getElementById(`total-cycles-${deviceId}`).textContent = cycleStats.totalCycles;
+
+                // Mettre à jour les codes manquants
+                const missingTitle = document.getElementById(`missing-title-${deviceId}`);
+                const missingList = document.getElementById(`missing-list-${deviceId}`);
+                if (lastCycleMissing.length > 0) {
+                    missingTitle.textContent = '⚠️ Codes manquants (cycle actuel)';
+                    missingList.textContent = lastCycleMissing.join(', ');
+                    missingList.className = 'missing-list';
+                } else if (cycleStats.lastCycle.size === 10) {
+                    missingTitle.textContent = '✅ Cycle complet';
+                    missingList.textContent = 'Tous les codes du cycle actuel détectés';
+                    missingList.className = 'missing-list none';
+                } else {
+                    missingTitle.textContent = '🔄 Cycle en cours';
+                    missingList.textContent = 'En attente de plus de codes...';
+                    missingList.className = 'missing-list';
+                }
+
+                // Mettre à jour la grille de codes
+                const grid = document.getElementById(`grid-${deviceId}`);
+
+                // Si la grille n'a pas été créée, créer les boxes
+                if (grid.children.length === 0) {
+                    expectedCodes.forEach(code => {
+                        const codeBox = document.createElement('div');
+                        codeBox.id = `code-${deviceId}-${code}`;
+                        codeBox.className = 'code-box missing';
+                        codeBox.innerHTML = `
+                            <div class="code-count" id="count-${deviceId}-${code}">0</div>
+                            <div class="code-label">${code}</div>
+                            <div class="code-time" id="time-${deviceId}-${code}">jamais</div>
+                        `;
+                        grid.appendChild(codeBox);
+                    });
+                }
+
+                // Mettre à jour chaque code box
+                expectedCodes.forEach(code => {
+                    const codeBox = document.getElementById(`code-${deviceId}-${code}`);
+                    const codeCount = document.getElementById(`count-${deviceId}-${code}`);
+                    const codeTime = document.getElementById(`time-${deviceId}-${code}`);
+                    const codeInfo = cycleStats.codeInfo.get(code);
+
+                    // Réinitialiser les classes
+                    codeBox.className = 'code-box';
+
+                    if (codeInfo) {
+                        const ageSeconds = (now - codeInfo.lastSeen) / 1000;
+                        const inCurrentCycle = cycleStats.lastCycle.has(code);
+                        const isMissedInCurrentCycle = lastCycleMissing.includes(code);
+
+                        if (isMissedInCurrentCycle) {
+                            // Code manquant dans le cycle actuel (NOK)
+                            codeBox.classList.add('sequence-error');
+                        } else if (inCurrentCycle && ageSeconds < 15) {
+                            codeBox.classList.add('detected-recent');
+                        } else if (ageSeconds < 60) {
+                            codeBox.classList.add('detected-aging');
+                        } else {
+                            codeBox.classList.add('missing');
+                        }
+
+                        const timeAgo = ageSeconds < 60
+                            ? `${Math.round(ageSeconds)}s`
+                            : `${Math.round(ageSeconds / 60)}m`;
+
+                        codeCount.textContent = codeInfo.totalCount;
+                        codeTime.textContent = timeAgo;
+                        codeBox.title = `${code}: ${codeInfo.totalCount} détections (${codeInfo.cycleCount} cycles), dernier vu il y a ${timeAgo}`;
+                    } else {
+                        codeBox.classList.add('missing');
+                        codeCount.textContent = '0';
+                        codeTime.textContent = 'jamais';
+                        codeBox.title = `${code}: jamais détecté`;
+                    }
+                });
+            });
+
+            // Si aucun device
+            if (deviceDetections.size === 0) {
+                container.innerHTML = '<div class="no-data">Aucune donnée de balise disponible</div>';
+            }
+        }
+
+        // Analyser les cycles de rotation
+        function analyzeCycles(detectionList, beaconType, now) {
+            const codeInfo = new Map();
+            const cycles = [];
+            let currentCycle = new Set();
+            let cycleStartTime = null;
+            const missedCodes = new Set();
+            let lastCode = null;
+            let lastTimestamp = null;
+
+            // Fenêtre glissante de 100 secondes pour le taux de capture (10 cycles x 10 secondes)
+            const slidingWindowMs = 100000;
+            const windowStart = now - slidingWindowMs;
+            let okCount = 0;
+            let nokCount = 0;
+
+            // Parcourir les détections (du plus ancien au plus récent pour suivre la séquence)
+            const orderedList = [...detectionList].reverse();
+
+            orderedList.forEach((detection, idx) => {
+                const code = detection.code;
+                const codeNum = parseInt(code.substring(2));
+                const inWindow = detection.timestamp >= windowStart;
+
+                // Vérifier la séquence et compter les codes manquants
+                if (lastCode && lastTimestamp) {
+                    const lastNum = parseInt(lastCode.substring(2));
+                    const timeDiff = (detection.timestamp - lastTimestamp) / 1000; // en secondes
+
+                    // Si plus de 2 secondes depuis la dernière détection, on peut confirmer les manquants
+                    if (timeDiff >= 2) {
+                        // Calculer combien de codes auraient dû être reçus
+                        let expectedNum = (lastNum + 1) % 10;
+                        let missed = 0;
+
+                        // Compter les codes manquants jusqu'au code actuel
+                        while (expectedNum !== codeNum && missed < 10) {
+                            const missedCode = `${beaconType}${expectedNum}`;
+                            missedCodes.add(missedCode);
+                            if (inWindow) nokCount++;
+                            missed++;
+                            expectedNum = (expectedNum + 1) % 10;
+                        }
+
+                        // Le code actuel est OK (reçu)
+                        if (inWindow) okCount++;
+                    } else {
+                        // Moins de 2 secondes, on ne peut pas encore confirmer si NOK
+                        // On compte juste le OK pour le code reçu
+                        if (inWindow) okCount++;
+                    }
+                }
+
+                lastCode = code;
+                lastTimestamp = detection.timestamp;
+
+                // Initialiser les stats du code
+                if (!codeInfo.has(code)) {
+                    codeInfo.set(code, {
+                        totalCount: 0,
+                        cycleCount: 0,
+                        lastSeen: detection.timestamp
+                    });
+                }
+                const info = codeInfo.get(code);
+                info.totalCount++;
+                if (detection.timestamp > info.lastSeen) {
+                    info.lastSeen = detection.timestamp;
+                }
+
+                // Détection du début d'un nouveau cycle (retour à 0 ou 1)
+                if (codeNum === 0 || codeNum === 1) {
+                    // Si on a déjà des codes dans le cycle actuel et qu'on voit 0/1, nouveau cycle
+                    if (currentCycle.size > 0) {
+                        cycles.push({
+                            codes: new Set(currentCycle),
+                            startTime: cycleStartTime,
+                            endTime: detection.timestamp
+                        });
+                        currentCycle.clear();
+                    }
+                    cycleStartTime = detection.timestamp;
+                }
+
+                currentCycle.add(code);
+
+                // Compter les cycles pour ce code
+                if (codeNum === 0 || (currentCycle.size === 1 && codeNum === 1)) {
+                    info.cycleCount++;
+                }
+            });
+
+            // Ajouter le dernier cycle (en cours)
+            if (currentCycle.size > 0) {
+                cycles.push({
+                    codes: currentCycle,
+                    startTime: cycleStartTime,
+                    endTime: now
+                });
+            }
+
+            // Analyser le dernier cycle
+            const lastCycle = cycles.length > 0 ? cycles[cycles.length - 1].codes : new Set();
+            const expectedCodes = Array.from({length: 10}, (_, i) => `${beaconType}${i}`);
+            const lastCycleMissingCodes = expectedCodes.filter(c => !lastCycle.has(c));
+            const currentCycleRate = Math.round((lastCycle.size / 10) * 100);
+
+            // Taux de capture glissant (100 secondes): OK / (OK + NOK)
+            const totalTransitions = okCount + nokCount;
+            const slidingCaptureRate = totalTransitions > 0
+                ? Math.round((okCount / totalTransitions) * 100)
+                : 0;
+
+            return {
+                lastCycle: lastCycle,
+                lastCycleMissingCodes: lastCycleMissingCodes,
+                currentCycleRate: currentCycleRate,
+                slidingCaptureRate: slidingCaptureRate,
+                okCount: okCount,
+                nokCount: nokCount,
+                totalCycles: cycles.length,
+                codeInfo: codeInfo,
+                missedCodes: missedCodes
+            };
+        }
+
+        // Event listeners pour les filtres
+        document.getElementById('filter-device').addEventListener('change', applyFilters);
+        document.getElementById('filter-node').addEventListener('change', applyFilters);
+        document.getElementById('filter-code').addEventListener('input', applyFilters);
+
+        // Mettre à jour l'analyse toutes les 2 secondes
+        setInterval(updateCodeAnalysis, 2000);
+
+        // Initialiser
+        loadHistory();
+    </script>
+</body>
+</html>

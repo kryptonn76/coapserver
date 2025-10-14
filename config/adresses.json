@@ -1,0 +1,84 @@
+{
+  "nodes": {
+    "gateway": {
+      "address": "fde7:cfa3:40ca:73b5:b63a:45ff:fe18:2384",
+      "ordre": 0,
+      "connexes": []
+    },
+    "d2C": {
+      "address": "fd78:8e78:3bfe:1:f2a0:91f8:bb:b8dc",
+      "ordre": 0,
+      "connexes": []
+    },
+    "d3D": {
+      "address": "fd78:8e78:3bfe:1:7e42:8854:b0f:a04",
+      "ordre": 0,
+      "connexes": []
+    },
+    "d4E": {
+      "address": "fd78:8e78:3bfe:1:5339:695e:8f14:acf6",
+      "ordre": 0,
+      "connexes": []
+    },
+    "d5F": {
+      "address": "fd78:8e78:3bfe:1:752c:f0c4:4bb7:5dc0",
+      "ordre": 0,
+      "connexes": []
+    },
+    "s3Y": {
+      "address": "fd78:8e78:3bfe:1:53c4:8e46:6597:c9ac",
+      "ordre": 3,
+      "connexes": ["s2W", "s4X"]
+    },
+    "s2W": {
+      "address": "fd78:8e78:3bfe:1:6b03:c6e7:eff:d01f",
+      "ordre": 2,
+      "connexes": ["s1Z", "s3Y"]
+    },
+    "s4X": {
+      "address": "fd78:8e78:3bfe:1:7fdf:e5a8:daf1:f9ac",
+      "ordre": 4,
+      "connexes": ["s3Y"]
+    },
+    "s1Z": {
+      "address": "fd78:8e78:3bfe:1:3d54:d9a9:dd0f:2e1b",
+      "ordre": 1,
+      "connexes": ["s2W"]
+    },
+    "n01": {
+      "address": "fd78:8e78:3bfe:1:200e:ec05:f3:1007",
+      "ordre": 0,
+      "connexes": []
+    },
+    "n02": {
+      "address": "fd78:8e78:3bfe:1:f2a0:91f8:bb:b8dc",
+      "ordre": 0,
+      "connexes": []
+    },
+    "n03": {
+      "address": "fd78:8e78:3bfe:1:a37a:11fc:59bd:38b9",
+      "ordre": 0,
+      "connexes": []
+    },
+    "n04": {
+      "address": "fd78:8e78:3bfe:1:470a:a7ab:c564:1d8",
+      "ordre": 0,
+      "connexes": []
+    },
+    "n05": {
+      "address": "fd78:8e78:3bfe:1:1964:2837:31a9:5ce9",
+      "ordre": 0,
+      "connexes": []
+    },
+    "n06": {
+      "address": "fd78:8e78:3bfe:1:6b6:19a6:f7b4:3fad",
+      "ordre": 0,
+      "connexes": []
+    },
+    "n07": {
+      "address": "fd78:8e78:3bfe:1:f551:77a1:9dad:326f",
+      "ordre": 0,
+      "connexes": []
+    }
+  }
+}

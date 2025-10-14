@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle Audio - PTI System</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .status-badge.connected {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-badge.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .sidebar h2 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .node-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .node-item {
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-item:hover {
+            border-color: #667eea;
+            background: #f3f4f6;
+        }
+
+        .node-item.selected {
+            border-color: #667eea;
+            background: #eef2ff;
+        }
+
+        .node-item.all-nodes {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+            font-weight: bold;
+        }
+
+        .node-item.all-nodes:hover {
+            background: #059669;
+        }
+
+        .node-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+
+        .node-status.offline {
+            background: #ef4444;
+        }
+
+        .main-panel {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .control-section {
+            margin-bottom: 30px;
+        }
+
+        .control-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .message-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .message-btn {
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .message-btn:hover {
+            border-color: #667eea;
+            background: #eef2ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .message-btn:active {
+            transform: translateY(0);
+        }
+
+        .message-btn .msg-id {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .message-btn .msg-text {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .stop-btn {
+            width: 100%;
+            padding: 20px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .stop-btn:hover {
+            background: #dc2626;
+            transform: scale(1.02);
+        }
+
+        .playing-indicator {
+            display: none;
+            background: #10b981;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        .playing-indicator.active {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-action-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-action-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .log-section {
+            margin-top: 30px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .log-section h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .log-entry {
+            padding: 5px;
+            font-size: 13px;
+            color: #666;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry .timestamp {
+            color: #999;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                🔊 Contrôle Audio - Système PTI
+            </h1>
+            <div class="status-bar">
+                <button onclick="window.location.href='/'" style="padding: 8px 16px; border: none; border-radius: 5px; background: #667eea; color: white; cursor: pointer; font-weight: bold;">
+                    ← Accueil
+                </button>
+                <span class="status-badge connected" id="connection-status">Connecté</span>
+                <span id="node-count">0 nodes actifs</span>
+            </div>
+        </header>
+
+        <div class="content">
+            <!-- Sidebar avec liste des nodes -->
+            <div class="sidebar">
+                <h2>Nodes Disponibles</h2>
+                <div class="node-list" id="node-list">
+                    <div class="node-item all-nodes" data-node="all">
+                        <span>🔊 Tous les nodes</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel principal -->
+            <div class="main-panel">
+                <div class="playing-indicator" id="playing-indicator">
+                    ▶ Lecture en cours sur: <span id="playing-target">Tous</span>
+                </div>
+
+                <div class="control-section">
+                    <h3>Actions Rapides</h3>
+                    <div class="quick-actions">
+                        <button class="quick-action-btn" onclick="playRandom()">🎲 Message Aléatoire</button>
+                        <button class="quick-action-btn" onclick="playSequence()">▶️ Jouer Séquence 1-5</button>
+                        <button class="quick-action-btn" onclick="testAll()">🔄 Test Tous Nodes</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Messages PTI (1-20)</h3>
+                    <div class="message-grid" id="message-grid">
+                        <!-- Messages générés par JavaScript -->
+                    </div>
+                </div>
+
+                <button class="stop-btn" onclick="stopAudio()">⏹ STOP</button>
+
+                <div class="log-section">
+                    <h3>Historique</h3>
+                    <div id="log-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let selectedNode = 'all';
+        let nodes = {};
+
+        // Messages PTI
+        const messages = [
+            "Alerte PTI déclenchée",
+            "Perte de mouvement détectée",
+            "Bouton d'urgence pressé",
+            "Absence de réponse",
+            "Chute suspectée",
+            "Point de rassemblement",
+            "Test réussi",
+            "Test échoué",
+            "Signal faible",
+            "Position reçue",
+            "Contrôle de présence",
+            "Perte de signal",
+            "Retour vocal",
+            "Alerte sonore",
+            "Message critique",
+            "Alerte silencieuse",
+            "Mode veille activé",
+            "Batterie faible",
+            "Synchronisé",
+            "Avril 14th (Aphex Twin)"
+        ];
+
+        // Générer les boutons de messages
+        function initMessageGrid() {
+            const grid = document.getElementById('message-grid');
+            messages.forEach((msg, index) => {
+                const id = index + 1;
+                const btn = document.createElement('button');
+                btn.className = 'message-btn';
+                btn.innerHTML = `
+                    <div class="msg-id">Message ${id}</div>
+                    <div class="msg-text">${msg}</div>
+                `;
+                btn.onclick = () => playMessage(id);
+                grid.appendChild(btn);
+            });
+        }
+
+        // Charger les nodes
+        async function loadNodes() {
+            try {
+                const response = await fetch('/api/nodes');
+                const data = await response.json();
+                nodes = data;
+                updateNodeList();
+            } catch (error) {
+                console.error('Erreur chargement nodes:', error);
+            }
+        }
+
+        // Mettre à jour la liste des nodes
+        function updateNodeList() {
+            const list = document.getElementById('node-list');
+            const count = Object.keys(nodes).length;
+            document.getElementById('node-count').textContent = `${count} nodes actifs`;
+
+            // Garder le bouton "Tous les nodes"
+            list.innerHTML = `
+                <div class="node-item all-nodes ${selectedNode === 'all' ? 'selected' : ''}"
+                     data-node="all" onclick="selectNode('all')">
+                    <span>🔊 Tous les nodes</span>
+                </div>
+            `;
+
+            // Ajouter les nodes individuels
+            Object.entries(nodes).forEach(([name, data]) => {
+                const div = document.createElement('div');
+                div.className = `node-item ${selectedNode === name ? 'selected' : ''}`;
+                div.dataset.node = name;
+                div.onclick = () => selectNode(name);
+                div.innerHTML = `
+                    <span>${name}</span>
+                    <span class="node-status"></span>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // Sélectionner un node
+        function selectNode(nodeName) {
+            selectedNode = nodeName;
+            document.querySelectorAll('.node-item').forEach(item => {
+                item.classList.toggle('selected', item.dataset.node === nodeName);
+            });
+            addLog(`Node sélectionné: ${nodeName === 'all' ? 'Tous' : nodeName}`);
+        }
+
+        // Jouer un message
+        async function playMessage(msgId) {
+            const target = selectedNode === 'all' ? 'Tous' : selectedNode;
+            addLog(`▶ Lecture message ${msgId} sur ${target}`);
+
+            const indicator = document.getElementById('playing-indicator');
+            document.getElementById('playing-target').textContent = target;
+            indicator.classList.add('active');
+
+            try {
+                const response = await fetch('/api/audio_command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        node: selectedNode,
+                        command: `play:${msgId}`
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    addLog(`✓ Message ${msgId} envoyé avec succès`);
+                } else {
+                    addLog(`✗ Erreur: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addLog(`✗ Erreur réseau: ${error}`, 'error');
+            }
+
+            setTimeout(() => {
+                indicator.classList.remove('active');
+            }, 2000);
+        }
+
+        // Arrêter l'audio
+        async function stopAudio() {
+            const target = selectedNode === 'all' ? 'Tous' : selectedNode;
+            addLog(`⏹ Arrêt audio sur ${target}`);
+
+            try {
+                const response = await fetch('/api/audio_command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        node: selectedNode,
+                        command: 'stop'
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    addLog('✓ Audio arrêté');
+                }
+            } catch (error) {
+                addLog(`✗ Erreur: ${error}`, 'error');
+            }
+        }
+
+        // Message aléatoire
+        function playRandom() {
+            const randomId = Math.floor(Math.random() * 20) + 1;
+            playMessage(randomId);
+        }
+
+        // Séquence de test
+        async function playSequence() {
+            addLog('▶ Début séquence 1-5');
+            for (let i = 1; i <= 5; i++) {
+                await playMessage(i);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+            addLog('✓ Séquence terminée');
+        }
+
+        // Test sur tous les nodes
+        async function testAll() {
+            const oldSelection = selectedNode;
+            addLog('🔄 Test de tous les nodes...');
+
+            selectNode('all');
+            await playMessage(7); // Message "Test réussi"
+
+            setTimeout(() => {
+                selectNode(oldSelection);
+            }, 2000);
+        }
+
+        // Ajouter une entrée au log
+        function addLog(message, type = 'info') {
+            const container = document.getElementById('log-container');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="timestamp">[${time}]</span> ${message}`;
+            container.insertBefore(entry, container.firstChild);
+
+            // Garder seulement les 50 dernières entrées
+            while (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        // Socket.IO events
+        socket.on('connect', () => {
+            document.getElementById('connection-status').textContent = 'Connecté';
+            document.getElementById('connection-status').className = 'status-badge connected';
+            addLog('✓ Connecté au serveur');
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('connection-status').textContent = 'Déconnecté';
+            document.getElementById('connection-status').className = 'status-badge disconnected';
+            addLog('✗ Déconnecté du serveur', 'error');
+        });
+
+        // Initialisation
+        initMessageGrid();
+        loadNodes();
+        setInterval(loadNodes, 10000); // Refresh toutes les 10 secondes
+    </script>
+</body>
+</html>

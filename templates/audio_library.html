@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibliothèque Audio - ESP32 OpenThread</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='audio_library.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📢 Bibliothèque Audio ESP32</h1>
+            <p class="subtitle">258 messages vocaux + 95 pistes musicales</p>
+        </header>
+
+        <!-- Node Selector -->
+        <section class="node-selector">
+            <label for="target-node">🎯 Node cible:</label>
+            <select id="target-node" required>
+                <option value="">-- Sélectionner un node --</option>
+            </select>
+            <div class="volume-control">
+                <label for="volume-slider">🔊 Volume:</label>
+                <input type="range" id="volume-slider" min="0" max="100" value="75">
+                <span id="volume-value">75%</span>
+            </div>
+            <button id="btn-stop" class="btn-stop" onclick="stopAudio()">⏹️ Stop</button>
+        </section>
+
+        <!-- Search Bar -->
+        <section class="search-section">
+            <input type="text" id="search-input" placeholder="🔍 Rechercher par mot-clé (évacuation, alerte, batterie...)" />
+            <div id="search-results" class="results-container hidden"></div>
+        </section>
+
+        <!-- Instant Messages (20 priority) -->
+        <section class="instant-section">
+            <h2>⚡ Messages instantanés - Secteur tertiaire</h2>
+            <p class="section-description">20 messages prioritaires pour les interventions courantes</p>
+            <div id="instant-messages" class="instant-grid">
+                <div class="loading">Chargement...</div>
+            </div>
+        </section>
+
+        <!-- Category Browser -->
+        <section class="categories-section">
+            <h2>📁 Catalogue complet par catégories</h2>
+            <div id="categories-container">
+                <div class="loading">Chargement...</div>
+            </div>
+        </section>
+
+        <!-- Music Albums (Dynamic) -->
+        <section class="music-section collapsed">
+            <h2 class="collapsible-header" onclick="toggleSection('music-section')">
+                🎵 Albums musicaux (95 pistes)
+                <span class="toggle-icon">▼</span>
+            </h2>
+            <div class="section-content">
+                <p class="section-description">Musique d'ambiance et attente. Cliquez sur "▶️ Tout jouer" pour lire l'album complet, ou "📋 Voir morceaux" pour choisir un morceau spécifique.</p>
+                <div id="music-albums" class="albums-grid">
+                    <div class="loading">Chargement des albums...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Playback Status -->
+        <section class="status-section">
+            <div id="playback-status" class="status-box hidden">
+                <span class="status-icon">▶️</span>
+                <span id="status-text">En attente...</span>
+            </div>
+        </section>
+
+        <!-- Statistics Footer -->
+        <footer>
+            <div class="stats">
+                <span>📊 Total: <strong id="total-messages">258</strong> messages</span>
+                <span>📂 Catégories: <strong id="total-categories">7</strong></span>
+                <span>🎵 Musique: <strong>95</strong> pistes</span>
+            </div>
+            <div class="credits">
+                Powered by ESP32-C6 + OpenThread + CoAP | Audio Library v1.0
+            </div>
+        </footer>
+    </div>
+
+    <!-- Template for message card -->
+    <template id="message-card-template">
+        <div class="message-card" data-id="">
+            <div class="message-header">
+                <span class="message-id">#</span>
+                <span class="message-category"></span>
+            </div>
+            <div class="message-description"></div>
+            <div class="message-actions">
+                <button class="btn-play" onclick="playMessage(this)">▶️ Jouer</button>
+                <span class="message-path"></span>
+            </div>
+        </div>
+    </template>
+
+    <!-- Template for category section -->
+    <template id="category-template">
+        <div class="category-section" data-category="">
+            <h3 class="category-header collapsible-header" onclick="toggleCategory(this)">
+                <span class="category-icon">📁</span>
+                <span class="category-name"></span>
+                <span class="category-count">(0 messages)</span>
+                <span class="toggle-icon">▼</span>
+            </h3>
+            <div class="category-content collapsed">
+                <div class="messages-grid"></div>
+            </div>
+        </div>
+    </template>
+
+    <script src="{{ url_for('static', filename='audio_library.js') }}"></script>
+    <script>
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNodes();
+            loadInstantMessages();
+            loadCategories();
+            setupSearch();
+            setupVolumeControl();
+            connectWebSocket();
+        });
+    </script>
+</body>
+</html>

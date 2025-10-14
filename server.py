@@ -1,0 +1,2868 @@
+#!/usr/bin/env python3
+"""
+Serveur CoAP pour contrôler les nodes ESP32 OpenThread
+Version avec socket UDP simple qui fonctionne sur macOS
+Intégration ThingsBoard pour la télémétrie des batteries
+Intégration WebSocket pour recevoir les mises à jour de télémétrie en temps réel
+Cartographie automatique du réseau OpenThread
+"""
+
+import socket
+import struct
+import json
+import time
+import threading
+import queue
+from datetime import datetime
+from pathlib import Path
+from collections import deque
+import os
+import requests
+from dotenv import load_dotenv
+
+# Import ThingsBoard (optionnel)
+try:
+    from tb_rest_client.rest_client_ce import RestClientCE
+    from tb_rest_client.rest import ApiException
+    TB_AVAILABLE = True
+except ImportError:
+    print("⚠️  Module tb_rest_client non disponible - ThingsBoard désactivé")
+    RestClientCE = None
+    ApiException = None
+    TB_AVAILABLE = False
+
+from flask import Flask, render_template, jsonify, request
+from flask_socketio import SocketIO, emit
+from flask_cors import CORS
+import logging
+
+# Import ThingsBoard Location Tracker (optionnel)
+try:
+    from lib.thingsboard_loc_tracker import ThingsBoardLocTracker
+except ImportError as e:
+    print(f"⚠️  Module thingsboard_loc_tracker non disponible: {e}")
+    ThingsBoardLocTracker = None
+
+import asyncio
+from lib.network_topology import NetworkTopology
+from lib.ot_network_mapper import OpenThreadScanner
+
+# Import audio library
+from lib.audio_library import audio_lib
+
+# Charger les variables d'environnement
+load_dotenv()
+
+# Configuration
+COAP_PORT = 5683
+ADDRESSES_FILE = "config/adresses.json"
+WEB_PORT = 5001
+
+# Flask app
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key-for-demo'
+CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# Queue thread-safe pour émissions SocketIO depuis threads externes
+# Cela évite le blocage des émissions quand le serveur Flask est occupé
+socketio_queue = queue.Queue(maxsize=200)  # Buffer jusqu'à 200 événements
+socketio_queue_running = True
+
+def socketio_emit_worker():
+    """Thread worker qui consomme la queue et émet les événements SocketIO
+
+    Ce thread tourne dans le contexte Flask et peut émettre en continu
+    sans être bloqué par les threads externes (CoAP, etc.)
+    """
+    print(f"🔄 [SOCKETIO-WORKER] Thread démarré, en attente d'événements...")
+    while socketio_queue_running:
+        try:
+            # Attendre un événement (timeout 0.5s pour vérifier periodiquement le flag)
+            event_name, event_data = socketio_queue.get(timeout=0.5)
+
+            t_dequeue = time.time()
+            print(f"📤 [SOCKETIO-WORKER] Dequeue événement '{event_name}' à {t_dequeue:.3f}")
+
+            # Émettre via SocketIO dans le contexte Flask
+            socketio.emit(event_name, event_data)
+
+            t_emit = time.time()
+            emit_delay_ms = (t_emit - t_dequeue) * 1000
+            print(f"✅ [SOCKETIO-WORKER] Émission '{event_name}' terminée en {emit_delay_ms:.1f}ms")
+
+            socketio_queue.task_done()
+        except queue.Empty:
+            # Pas d'événement, continuer la boucle
+            continue
+        except Exception as e:
+            print(f"❌ Erreur émission SocketIO worker: {e}")
+
+# Lancer le worker thread au démarrage du module
+socketio_worker_thread = threading.Thread(target=socketio_emit_worker, daemon=True)
+socketio_worker_thread.start()
+
+# Réduire les logs Flask
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
+# Configuration ThingsBoard
+TB_CONFIG = {
+    'url': os.getenv('TB_URL', 'https://platform.tamtamdeals.com'),
+    'username': os.getenv('TB_USERNAME', ''),
+    'password': os.getenv('TB_PASSWORD', '')
+}
+
+class NodeRegistry:
+    """Gère le registre des nodes et leurs adresses"""
+    def __init__(self, filename=ADDRESSES_FILE):
+        self.filename = filename
+        self.nodes = {}
+        self.lock = threading.Lock()
+        self.load()
+    
+    def load(self):
+        """Charge les adresses depuis le fichier JSON"""
+        try:
+            if Path(self.filename).exists():
+                with open(self.filename, 'r') as f:
+                    data = json.load(f)
+                    with self.lock:
+                        self.nodes = data.get('nodes', {})
+                    print(f"📂 Chargé {len(self.nodes)} nodes depuis {self.filename}")
+            else:
+                print(f"📝 Fichier {self.filename} non trouvé, création d'un nouveau")
+                self.save()
+        except Exception as e:
+            print(f"❌ Erreur lecture fichier: {e}")
+            self.nodes = {}
+    
+    def save(self):
+        """Sauvegarde les adresses dans le fichier JSON"""
+        try:
+            with self.lock:
+                nodes_copy = self.nodes.copy()
+            with open(self.filename, 'w') as f:
+                json.dump({'nodes': nodes_copy}, f, indent=2)
+            print(f"💾 Sauvegardé {len(nodes_copy)} nodes")
+        except Exception as e:
+            print(f"❌ Erreur sauvegarde: {e}")
+    
+    def get_all_addresses(self):
+        """Retourne toutes les adresses IPv6"""
+        with self.lock:
+            # Gestion du nouveau format avec address et ordre
+            addresses = []
+            for name, node_data in self.nodes.items():
+                if isinstance(node_data, dict):
+                    addresses.append(node_data.get('address', ''))
+                else:
+                    # Ancien format (compatibilité)
+                    addresses.append(node_data)
+            return addresses
+    
+    def get_node_by_address(self, address):
+        """Trouve le nom du node par son adresse"""
+        # Nettoyer l'adresse
+        if address.startswith('['):
+            address = address[1:address.find(']')]
+        
+        with self.lock:
+            for name, node_data in self.nodes.items():
+                if isinstance(node_data, dict):
+                    if node_data.get('address') == address:
+                        return name
+                else:
+                    # Ancien format (compatibilité)
+                    if node_data == address:
+                        return name
+        return None
+    
+    def get_nodes_sorted_by_order(self):
+        """Retourne les nodes triés par ordre (excluant ceux avec ordre=0)"""
+        with self.lock:
+            sorted_nodes = []
+            for name, node_data in self.nodes.items():
+                if isinstance(node_data, dict):
+                    ordre = node_data.get('ordre', 0)
+                    if ordre > 0:
+                        sorted_nodes.append({
+                            'name': name,
+                            'address': node_data.get('address'),
+                            'ordre': ordre
+                        })
+            # Trier par ordre
+            sorted_nodes.sort(key=lambda x: x['ordre'])
+            return sorted_nodes
+    
+    def get_connected_nodes(self, node_name):
+        """Retourne la liste des nodes connexes pour un node donné"""
+        with self.lock:
+            if node_name in self.nodes:
+                node_data = self.nodes[node_name]
+                if isinstance(node_data, dict):
+                    return node_data.get('connexes', [])
+        return []
+    
+    def get_all_node_names(self):
+        """Retourne tous les noms de nodes"""
+        with self.lock:
+            return list(self.nodes.keys())
+
+class ThingsBoardClient:
+    """Client ThingsBoard pour envoyer la télémétrie et recevoir les mises à jour"""
+    
+    def __init__(self, on_telemetry_update=None, on_location_change=None):
+        self.client = None
+        self.customer_id = None
+        self.connected = False
+        self.asset_cache = {}  # Cache des assets par nom
+        self.asset_id_to_name = {}  # Mapping inverse ID -> nom
+        self.device_cache = {}  # Cache des devices par nom
+        self.device_id_to_name = {}  # Mapping inverse device ID -> nom
+        self.device_loc_code = {}  # Stockage des valeurs loc_code par device
+        self.last_loc_code = None  # Dernière localisation globale
+        self.token_timestamp = 0  # Timestamp de la dernière connexion
+        self.token_lifetime = 900  # Durée de vie du token en secondes (15 min)
+        self.ws_client = None  # Client WebSocket
+        self.on_telemetry_update = on_telemetry_update  # Callback pour les mises à jour
+        self.on_location_change = on_location_change  # Callback pour changement de zone
+        
+    def connect(self) -> bool:
+        """Se connecter à ThingsBoard (REST + WebSocket)"""
+        if not TB_AVAILABLE:
+            print("⚠️ ThingsBoard: Module non disponible")
+            return False
+
+        if not TB_CONFIG['username'] or not TB_CONFIG['password']:
+            print("⚠️ ThingsBoard: Credentials non configurés")
+            return False
+
+        try:
+            print("🌐 Connexion à ThingsBoard...")
+            self.client = RestClientCE(base_url=TB_CONFIG['url'])
+            self.client.login(username=TB_CONFIG['username'], password=TB_CONFIG['password'])
+            
+            # Obtenir les infos utilisateur
+            user = self.client.get_user()
+            print(f"✅ ThingsBoard: Connecté en tant que {user.email}")
+            
+            # Stocker customer ID pour CUSTOMER_USER
+            if hasattr(user, 'customer_id') and user.customer_id:
+                self.customer_id = user.customer_id.id
+                
+            self.connected = True
+            self.token_timestamp = time.time()  # Enregistrer le timestamp de connexion
+            self.refresh_asset_cache()
+            
+            # Connexion WebSocket pour les mises à jour en temps réel
+            self._connect_websocket()
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ ThingsBoard: Erreur connexion: {e}")
+            self.connected = False
+            return False
+    
+    def _connect_websocket(self):
+        """Établir la connexion WebSocket pour recevoir les mises à jour"""
+        try:
+            # Récupérer le token JWT
+            token = self.client.configuration.api_key['X-Authorization'].replace('Bearer ', '')
+            
+            # Créer le client WebSocket avec callback pour loc_code
+            self.ws_client = ThingsBoardLocTracker(
+                url=TB_CONFIG['url'],
+                token=token,
+                on_loc_update=self._handle_loc_update
+            )
+            
+            # Préparer la liste des devices AVANT la connexion
+            devices_list = []
+            for device_name, device_id in self.device_cache.items():
+                devices_list.append({
+                    'id': device_id,
+                    'name': device_name
+                })
+                self.device_id_to_name[device_id] = device_name
+            
+            # Configurer les devices AVANT de se connecter
+            if devices_list:
+                print(f"📡 Configuration de {len(devices_list)} devices pour le suivi loc_code...")
+                self.ws_client.set_devices(devices_list)
+            
+            # Se connecter (cela déclenchera les souscriptions)
+            if self.ws_client.connect():
+                print("✅ WebSocket ThingsBoard connecté")
+                
+                # Afficher les devices surveillés  
+                for device in devices_list:
+                    if 'DALKIA' in device['name']:
+                        print(f"   🎯 {device['name']} (Badge)")
+                    else:
+                        print(f"   📱 {device['name']}")
+            else:
+                print("⚠️ Impossible d'établir la connexion WebSocket")
+                
+        except Exception as e:
+            print(f"❌ Erreur connexion WebSocket: {e}")
+    
+    def _handle_loc_update(self, device_id, device_name, loc_code, timestamp):
+        """Handler pour les mises à jour loc_code reçues via WebSocket"""
+        try:
+            # Détecter si la localisation a changé
+            location_changed = False
+            if self.last_loc_code and self.last_loc_code != loc_code:
+                location_changed = True
+                print(f"\n🔄 CHANGEMENT DE ZONE: {self.last_loc_code} → {loc_code}")
+            
+            # Stocker la valeur loc_code
+            self.device_loc_code[device_name] = {
+                'value': loc_code,
+                'timestamp': timestamp.timestamp() * 1000 if timestamp else time.time() * 1000,
+                'device_id': device_id
+            }
+            
+            # Mettre à jour la dernière localisation
+            self.last_loc_code = loc_code
+            
+            # Ne pas afficher les mises à jour régulières (désactivé pour réduire le bruit)
+            # time_str = timestamp.strftime('%H:%M:%S') if timestamp else datetime.now().strftime('%H:%M:%S')
+            # if 'DALKIA' in device_name:
+            #     print(f"\n🎯 [{time_str}] Badge Update:")
+            # else:
+            #     print(f"\n📍 [{time_str}] LOC_CODE Update:")
+            # print(f"   Device: {device_name}")
+            # print(f"   Position: {loc_code}")
+            
+            # Si changement de zone, appeler le callback
+            if location_changed and self.on_location_change:
+                print(f"   🔴 Clignotement LED rouge pour node: {loc_code}")
+                self.on_location_change(loc_code)
+            
+            # Émettre via Socket.IO pour l'interface web
+            socketio.emit('loc_code_update', {
+                'device': device_name,
+                'loc_code': loc_code,
+                'timestamp': timestamp.isoformat() if timestamp else datetime.now().isoformat(),
+                'device_id': device_id,
+                'location_changed': location_changed
+            })
+            
+            # Appeler le callback si défini
+            if self.on_telemetry_update:
+                self.on_telemetry_update(device_name, {'loc_code': loc_code})
+                
+        except Exception as e:
+            print(f"❌ Erreur traitement loc_code: {e}")
+    
+    def disconnect(self):
+        """Se déconnecter (REST + WebSocket)"""
+        # Déconnexion WebSocket
+        if self.ws_client:
+            try:
+                self.ws_client.disconnect()
+                print("👋 WebSocket ThingsBoard déconnecté")
+            except:
+                pass
+            self.ws_client = None
+            
+        # Déconnexion REST
+        if self.client:
+            try:
+                self.client.logout()
+                print("👋 ThingsBoard REST déconnecté")
+            except:
+                pass
+        self.connected = False
+    
+    def refresh_asset_cache(self):
+        """Rafraîchir le cache des assets et devices"""
+        if not self.connected:
+            return
+            
+        # Récupérer les assets
+        if self.customer_id:
+            try:
+                print("🔄 ThingsBoard: Récupération des assets...")
+                assets_page = self.client.get_customer_assets(
+                    customer_id=self.customer_id,
+                    page_size=100,
+                    page=0
+                )
+                
+                self.asset_cache = {}
+                self.asset_id_to_name = {}  # Réinitialiser le mapping inverse
+                for asset in assets_page.data:
+                    self.asset_cache[asset.name] = asset.id.id
+                    self.asset_id_to_name[asset.id.id] = asset.name  # Mapping inverse
+                    
+                print(f"📦 ThingsBoard: {len(self.asset_cache)} assets en cache")
+                
+            except Exception as e:
+                print(f"❌ ThingsBoard: Erreur récupération assets: {e}")
+        
+        # Récupérer les devices
+        try:
+            print("🔄 ThingsBoard: Récupération des devices...")
+            
+            # Essayer d'abord comme tenant
+            try:
+                devices_page = self.client.get_tenant_devices(
+                    page_size=100,
+                    page=0
+                )
+            except:
+                # Sinon essayer comme customer
+                if self.customer_id:
+                    devices_page = self.client.get_customer_devices(
+                        customer_id=self.customer_id,
+                        page_size=100,
+                        page=0
+                    )
+                else:
+                    print("⚠️ Impossible de récupérer les devices")
+                    return
+            
+            self.device_cache = {}
+            self.device_id_to_name = {}
+            for device in devices_page.data:
+                self.device_cache[device.name] = device.id.id
+                self.device_id_to_name[device.id.id] = device.name
+                # Initialiser loc_code à None
+                self.device_loc_code[device.name] = {
+                    'value': None,
+                    'timestamp': None,
+                    'device_id': device.id.id
+                }
+                
+            print(f"📱 ThingsBoard: {len(self.device_cache)} devices en cache")
+            
+            # Afficher les devices DALKIA
+            dalkia_devices = [name for name in self.device_cache.keys() if 'DALKIA' in name.upper()]
+            if dalkia_devices:
+                print(f"   Badges DALKIA: {', '.join(dalkia_devices)}")
+                
+        except Exception as e:
+            print(f"❌ ThingsBoard: Erreur récupération devices: {e}")
+    
+    def send_battery_telemetry(self, node_name: str, voltage: float, percentage: int) -> bool:
+        """Envoyer la télémétrie batterie pour un node"""
+        if not self.connected:
+            return False
+        
+        # Vérifier si le token est proche de l'expiration (renouveler 1 minute avant)
+        if time.time() - self.token_timestamp > (self.token_lifetime - 60):
+            print("🔄 ThingsBoard: Token proche de l'expiration, renouvellement...")
+            if not self.reconnect():
+                return False
+            
+        try:
+            # Chercher l'asset correspondant au node
+            asset_id = self.asset_cache.get(node_name)
+            if not asset_id:
+                print(f"⚠️ ThingsBoard: Asset '{node_name}' non trouvé")
+                return False
+            
+            # Préparer les données de télémétrie
+            telemetry_data = {
+                "ts": int(time.time() * 1000),
+                "values": {
+                    "battery_level": percentage,  # Pourcentage
+                    "battery_value": voltage      # Voltage
+                }
+            }
+            
+            # Obtenir le token JWT
+            token = self.client.configuration.api_key['X-Authorization'].replace('Bearer ', '')
+            
+            # Headers
+            headers = {
+                'Content-Type': 'application/json',
+                'X-Authorization': f'Bearer {token}'
+            }
+            
+            # URL de l'endpoint télémétrie
+            telemetry_url = f"{TB_CONFIG['url']}/api/plugins/telemetry/ASSET/{asset_id}/timeseries/SERVER_SCOPE"
+            
+            # Envoyer la requête
+            response = requests.post(telemetry_url, json=telemetry_data, headers=headers)
+            
+            if response.status_code == 200:
+                print(f"☁️ ThingsBoard: Télémétrie envoyée pour {node_name}")
+                return True
+            elif response.status_code == 401:
+                # Token expiré, tenter de se reconnecter
+                print("🔄 ThingsBoard: Token expiré, reconnexion...")
+                if self.reconnect():
+                    # Réessayer l'envoi après reconnexion
+                    return self.send_battery_telemetry(node_name, voltage, percentage)
+                else:
+                    return False
+            else:
+                print(f"❌ ThingsBoard: Erreur envoi télémétrie: HTTP {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ ThingsBoard: Erreur envoi télémétrie: {e}")
+            return False
+    
+    def reconnect(self) -> bool:
+        """Reconnexion à ThingsBoard (renouvellement du token)"""
+        try:
+            # Se déconnecter proprement
+            self.disconnect()
+            
+            # Se reconnecter
+            return self.connect()
+            
+        except Exception as e:
+            print(f"❌ ThingsBoard: Erreur reconnexion: {e}")
+            return False
+
+class BadgeTracker:
+    """Tracks badge code sequences for quality control (po1→po2→...→po0→po1)"""
+
+    def __init__(self, addr):
+        self.addr = addr
+        self.last_code = None
+        self.last_timestamp = 0
+        self.sequence_errors = 0  # Counter for sequence gaps
+        self.total_expected = 0   # Total frames expected since first seen
+        self.first_seen = time.time()
+
+    def check_sequence(self, new_code, timestamp):
+        """Check sequence continuity po1→po2→...→po0→po1
+
+        Returns:
+            (is_valid, gap): is_valid=True if sequence correct, gap=number of missed frames
+        """
+        if self.last_code is None:
+            # First frame
+            self.last_code = new_code
+            self.last_timestamp = timestamp
+            self.total_expected = 1
+            return (True, 0)
+
+        # Calculate expected code
+        last_digit = int(self.last_code[2])
+        if last_digit == 9:
+            expected_digit = 0
+        elif last_digit == 0:
+            expected_digit = 1
+        else:
+            expected_digit = last_digit + 1
+
+        expected_code = f"po{expected_digit}"
+
+        # Calculate gap
+        gap = 0
+        if new_code != expected_code:
+            gap = self._calculate_gap(self.last_code, new_code)
+            self.sequence_errors += gap
+
+        # Update state
+        self.last_code = new_code
+        self.last_timestamp = timestamp
+        self.total_expected += (gap + 1)  # Add gap + this frame
+
+        return (new_code == expected_code, gap)
+
+    def _calculate_gap(self, old_code, new_code):
+        """Calculate number of missed frames between old_code and new_code"""
+        old_digit = int(old_code[2])
+        new_digit = int(new_code[2])
+
+        # Map to sequence index: po1=1, po2=2, ..., po9=9, po0=10
+        old_idx = old_digit if old_digit != 0 else 10
+        new_idx = new_digit if new_digit != 0 else 10
+
+        # Calculate gap with wraparound (cycle of 10)
+        if new_idx > old_idx:
+            gap = new_idx - old_idx - 1
+        else:
+            gap = (10 - old_idx) + new_idx - 1
+
+        return gap if gap > 0 else 0
+
+    def get_stats(self):
+        """Get tracking statistics"""
+        runtime = time.time() - self.first_seen
+        received = self.total_expected - self.sequence_errors
+        success_rate = 100.0 * received / self.total_expected if self.total_expected > 0 else 0
+
+        return {
+            'addr': self.addr,
+            'runtime_sec': runtime,
+            'total_expected': self.total_expected,
+            'received': received,
+            'missed': self.sequence_errors,
+            'success_rate': success_rate,
+            'last_code': self.last_code
+        }
+
+class CoAPServer:
+    """Serveur CoAP avec socket UDP simple et intégration ThingsBoard WebSocket"""
+    
+    def __init__(self):
+        self.registry = NodeRegistry()
+        self.running = False
+        self.sock = None
+        self.event_count = 0
+        self.demo_mode = False
+        self.battery_status = {}  # Stockage de l'état batterie par node
+        self.ble_detections = {}  # Stockage des détections BLE beacon {code: {addr, rssi, timestamp, node}}
+        self.ble_multi_detections = {}  # Détections multi-routeurs {badge_addr: [{node, rssi, timestamp}, ...]}
+        self.badge_positions = {}  # Positions calculées des badges {badge_addr: {x, y, confidence, timestamp}}
+        self.node_positions = {}  # Positions des routeurs {node_name: {x, y}}
+        self.name_to_rloc16 = {}  # Mapping nom→RLOC16 (ex: "n01" → "0x1800")
+        self.ble_cache = {}  # Cache de déduplication globale {addr_code: timestamp}
+        self.ble_history = []  # Historique complet des détections pour la page web
+        self.thingsboard = ThingsBoardClient(
+            on_telemetry_update=self.handle_tb_telemetry_update,
+            on_location_change=self.handle_location_change
+        )  # Client ThingsBoard avec callbacks
+        self.led_states = {}  # État des LEDs par node
+        self.button_events = deque(maxlen=100)  # Historique des événements boutons
+        self.node_status = {}  # État général des nodes
+        self.tracking_mode = False  # Mode suivi de position
+        self.current_tracking_node = None  # Node actuellement active en mode suivi
+
+        # Badge sequence tracking for quality control
+        self.badge_trackers = {}  # {ble_addr: BadgeTracker}
+
+    def parse_coap_packet(self, data):
+        """Parse basique d'un paquet CoAP"""
+        if len(data) < 4:
+            return None
+            
+        # Header CoAP
+        byte0 = data[0]
+        version = (byte0 >> 6) & 0x03
+        msg_type = (byte0 >> 4) & 0x03
+        token_length = byte0 & 0x0F
+        
+        code = data[1]
+        message_id = struct.unpack('!H', data[2:4])[0]
+        
+        # Code CoAP
+        code_class = code >> 5
+        code_detail = code & 0x1F
+        
+        # Skip token
+        offset = 4 + token_length
+        
+        # Parser les options pour trouver l'URI path
+        uri_path = []
+        payload = b''
+        option_number = 0
+        
+        while offset < len(data):
+            if data[offset] == 0xFF:  # Marqueur de fin des options
+                offset += 1
+                if offset < len(data):
+                    payload = data[offset:]
+                break
+                
+            # Parser l'option
+            byte = data[offset]
+            option_delta = (byte >> 4) & 0x0F
+            option_length = byte & 0x0F
+            offset += 1
+            
+            # Gérer les deltas/longueurs étendus (simplifié)
+            if option_delta == 13:
+                option_delta = 13 + data[offset]
+                offset += 1
+            elif option_delta == 14:
+                option_delta = 269 + struct.unpack('!H', data[offset:offset+2])[0]
+                offset += 2
+                
+            if option_length == 13:
+                option_length = 13 + data[offset]
+                offset += 1
+            elif option_length == 14:
+                option_length = 269 + struct.unpack('!H', data[offset:offset+2])[0]
+                offset += 2
+                
+            option_number += option_delta
+            
+            # Extraire la valeur de l'option
+            if offset + option_length <= len(data):
+                option_value = data[offset:offset + option_length]
+                offset += option_length
+                
+                # Option 11 = Uri-Path
+                if option_number == 11:
+                    uri_path.append(option_value.decode('utf-8', errors='ignore'))
+            else:
+                break
+                    
+        return {
+            'version': version,
+            'type': msg_type,
+            'code': f"{code_class}.{code_detail:02d}",
+            'message_id': message_id,
+            'uri_path': '/'.join(uri_path),
+            'payload': payload,
+            'token_length': token_length
+        }
+    
+    def create_coap_response(self, message_id, code=0x45):  # 2.05 Content
+        """Crée une réponse CoAP ACK"""
+        header = struct.pack('!BBH', 
+                            0x60,  # Ver=1, Type=2 (ACK), TKL=0
+                            code,  # 2.05 Content
+                            message_id)
+        return header + b'\xff' + b'ok'  # Payload marker + contenu
+    
+    def create_coap_post_packet(self, uri_path, payload):
+        """Crée un paquet CoAP POST (helper pour éviter les logs)"""
+        message_id = int(time.time()) % 0xFFFF
+        header = struct.pack('!BBH',
+                            0x50,  # Ver=1, Type=NON, TKL=0
+                            0x02,  # Code=POST (0.02)
+                            message_id)
+        
+        # Option Uri-Path
+        uri_bytes = uri_path.encode('utf-8')
+        option_header = bytes([0xB0 + len(uri_bytes)])  # Delta=11
+        
+        # Construire le paquet
+        return header + option_header + uri_bytes + b'\xff' + payload.encode('utf-8')
+    
+    def send_coap_post(self, address, uri_path, payload):
+        """Envoie un POST CoAP à une adresse"""
+        try:
+            # Créer un nouveau socket pour l'envoi
+            sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+            
+            # Header CoAP POST
+            message_id = int(time.time()) % 0xFFFF
+            header = struct.pack('!BBH',
+                                0x50,  # Ver=1, Type=NON, TKL=0
+                                0x02,  # Code=POST (0.02)
+                                message_id)
+            
+            # Option Uri-Path
+            uri_bytes = uri_path.encode('utf-8')
+            option_header = bytes([0xB0 + len(uri_bytes)])  # Delta=11
+            
+            # Construire le paquet
+            packet = header + option_header + uri_bytes + b'\xff' + payload.encode('utf-8')
+            
+            # Envoyer
+            sock.sendto(packet, (address, COAP_PORT))
+            print(f"✅ Envoyé '{payload}' à {address}/{uri_path}")
+            
+            sock.close()
+            return True
+            
+        except Exception as e:
+            print(f"❌ Erreur envoi CoAP: {e}")
+            return False
+    
+    def handle_button_event(self, source_addr, payload, flash_duration=2, demo_mode=False):
+        """Traite un événement bouton"""
+        node_name = self.registry.get_node_by_address(source_addr)
+        if not node_name:
+            node_name = "unknown"
+        
+        # Créer l'événement pour le web
+        event_data = {
+            'node': node_name,
+            'address': source_addr,
+            'timestamp': datetime.now().isoformat(),
+            'type': 'button'
+        }
+        
+        # Vérifier si c'est un événement long press
+        if payload and payload.startswith("longpress:"):
+            # Extraire l'ID du node
+            node_id = payload.split(":", 1)[1] if ":" in payload else ""
+            print(f"\n🔘🔘 BOUTON LONG PRESS par {node_name} ({source_addr})")
+            print(f"   Node ID: {node_id}")
+            
+            # Récupérer l'état actuel de la LED du node source
+            current_state = self.led_states.get(source_addr, {}).get('light', False)
+            new_state = not current_state
+            
+            print(f"   État actuel de la LED source: {'ON' if current_state else 'OFF'}")
+            print(f"   → Toggle toutes les LEDs vers: {'ON' if new_state else 'OFF'}")
+            
+            # Obtenir toutes les adresses des nodes
+            addresses = self.registry.get_all_addresses()
+            
+            # Envoyer la commande à tous les nodes
+            command = "light:on" if new_state else "light:off"
+            for addr in addresses:
+                self.send_coap_post(addr, "led", command)
+                
+                # Mettre à jour l'état local de chaque node
+                if addr not in self.led_states:
+                    self.led_states[addr] = {}
+                self.led_states[addr]['light'] = new_state
+            
+            print(f"   ✅ {len(addresses)} nodes synchronisés")
+            
+            event_data['action'] = 'longpress'
+            event_data['node_id'] = node_id
+            event_data['global_led_state'] = new_state
+            
+            # Émettre l'événement WebSocket
+            socketio.emit('button_event', event_data)
+            self.button_events.append(event_data)
+            
+            # Émettre les mises à jour LED pour tous les nodes
+            for name, node_data in self.registry.nodes.items():
+                if isinstance(node_data, dict):
+                    addr = node_data.get('address')
+                else:
+                    addr = node_data
+                
+                if addr:
+                    socketio.emit('led_update', {
+                        'node': name,
+                        'led': 'light',
+                        'state': new_state
+                    })
+            
+            return
+        
+        # Événement click normal
+        print(f"\n🔘 BOUTON PRESSÉ par {node_name} ({source_addr})")
+        print(f"   Payload: {payload}")
+        
+        event_data['action'] = 'click'
+        event_data['payload'] = payload
+        
+        # Toggle la LED du node qui a envoyé l'événement
+        print(f"💡 Toggle LED sur {node_name}...")
+        
+        # Gérer l'état de la LED pour ce node
+        if not hasattr(self, 'led_states'):
+            self.led_states = {}
+        
+        # Toggle l'état
+        current_state = self.led_states.get(source_addr, {}).get('light', False)
+        new_state = not current_state
+        
+        if source_addr not in self.led_states:
+            self.led_states[source_addr] = {}
+        self.led_states[source_addr]['light'] = new_state
+        
+        # Envoyer la commande
+        command = "light:on" if new_state else "light:off"
+        self.send_coap_post(source_addr, "led", command)
+        
+        print(f"   → LED {node_name}: {'ON' if new_state else 'OFF'}")
+        
+        # Émettre l'événement WebSocket
+        event_data['led_state'] = new_state
+        socketio.emit('button_event', event_data)
+        self.button_events.append(event_data)
+        
+        # Mettre à jour l'état du node
+        socketio.emit('led_update', {
+            'node': node_name,
+            'led': 'light',
+            'state': new_state
+        })
+    
+    def handle_server_id(self, source_addr, payload):
+        """Traite une demande server-id"""
+        print(f"📡 Requête server-id de {source_addr}: {payload}")
+        # Le node connaît maintenant notre adresse
+        
+    def handle_battery_report(self, source_addr, payload):
+        """Traite un rapport de batterie"""
+        node_name = self.registry.get_node_by_address(source_addr)
+        if not node_name:
+            node_name = f"unknown_{source_addr[:8]}"
+        
+        # Parser le payload "12.45V:95"
+        try:
+            parts = payload.split(':')
+            if len(parts) >= 2:
+                voltage_str = parts[0].rstrip('V')
+                percentage_str = parts[1]
+                voltage = float(voltage_str)
+                percentage = int(percentage_str)
+                
+                # Stocker l'état batterie
+                if node_name not in self.battery_status:
+                    self.battery_status[node_name] = {
+                        'history': deque(maxlen=10),  # Garder les 10 dernières mesures
+                        'current': None
+                    }
+                
+                battery_data = {
+                    'timestamp': datetime.now(),
+                    'voltage': voltage,
+                    'percentage': percentage
+                }
+                
+                self.battery_status[node_name]['current'] = battery_data
+                self.battery_status[node_name]['history'].append(battery_data)
+                
+                # Afficher l'état
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                status_icon = "🔋" if percentage > 20 else "🪫"
+                print(f"\n{status_icon} [{timestamp}] Batterie {node_name}: {voltage:.2f}V ({percentage}%)")
+                
+                # Alerte si batterie faible
+                if percentage < 20:
+                    print(f"   ⚠️  ATTENTION: Batterie faible sur {node_name}!")
+                
+                # Émettre l'état batterie via WebSocket
+                socketio.emit('battery_update', {
+                    'node': node_name,
+                    'voltage': voltage,
+                    'percentage': percentage,
+                    'timestamp': datetime.now().isoformat(),
+                    'low_battery': percentage < 20
+                })
+                
+                # Envoyer à ThingsBoard
+                if self.thingsboard.connected:
+                    self.thingsboard.send_battery_telemetry(node_name, voltage, percentage)
+                    
+            else:
+                print(f"❌ Format de payload batterie invalide: {payload}")
+                
+        except Exception as e:
+            print(f"❌ Erreur parsing batterie: {e} (payload: {payload})")
+
+    def handle_ble_beacon(self, source_addr, payload):
+        """Traite une détection BLE beacon avec déduplication intelligente
+
+        Logique:
+        - Cache par balise (code+adresse) avec timeout 5s
+        - Changement de code = reset du cache pour cette balise
+        - Protection anti-retard: ancien code < 1s après nouveau code = ignoré
+        """
+        t_receive = time.time()
+        node_name = self.registry.get_node_by_address(source_addr)
+        if not node_name:
+            node_name = f"unknown_{source_addr[:8]}"
+
+        try:
+            # Parser le JSON payload
+            data = json.loads(payload)
+            code = data.get('code', '')
+            ble_addr = data.get('addr', '')
+            rssi = data.get('rssi', 0)
+            timestamp_ms = data.get('timestamp', 0)
+
+            print(f"📥 [COAP-RX] Trame BLE reçue: {code} @ {t_receive:.3f} (rssi={rssi}dBm)")
+
+            # Émettre TOUTES les trames pour debug (avant déduplication)
+            # Utiliser la queue thread-safe pour émission depuis thread CoAP
+            try:
+                t_before_queue = time.time()
+                socketio_queue.put_nowait(('ble_frame', {
+                    'router': node_name,
+                    'code': code,
+                    'badge_addr': ble_addr,
+                    'rssi': rssi,
+                    'timestamp': datetime.now().isoformat()
+                }))
+                t_after_queue = time.time()
+                queue_delay_us = (t_after_queue - t_before_queue) * 1000000
+                queue_size = socketio_queue.qsize()
+                print(f"📨 [COAP-RX] Trame {code} enqueue en {queue_delay_us:.0f}µs (queue={queue_size}/200)")
+            except queue.Full:
+                print(f"⚠️ Queue SocketIO pleine, trame BLE perdue")
+
+            cache_key = f"{ble_addr}_{code}"
+            now = time.time()
+
+            # Vérifier si on a déjà vu cette balise (n'importe quel code)
+            beacon_prefix = f"{ble_addr}_"
+            last_code = None
+            last_time = None
+
+            for key, timestamp in list(self.ble_cache.items()):
+                if key.startswith(beacon_prefix):
+                    last_code = key.split('_', 1)[1]
+                    last_time = timestamp
+
+                    # Changement de code détecté
+                    if last_code != code:
+                        # Avec émission 1x/seconde, accepter les paquets même en retard
+                        # (pas de double émission BLE donc pas de risque de duplicate)
+                        del self.ble_cache[key]
+                        break
+                    else:
+                        # Même code reçu deux fois
+                        time_diff = (now - last_time)
+                        if time_diff < 1.0:
+                            # Duplicate récent, ignorer
+                            return
+                        else:
+                            # Timeout expiré (>1s), accepter
+                            del self.ble_cache[key]
+                            break
+
+            # Mettre à jour le cache avec le nouveau code
+            self.ble_cache[cache_key] = now
+
+            # Track sequence for quality control
+            if ble_addr not in self.badge_trackers:
+                self.badge_trackers[ble_addr] = BadgeTracker(ble_addr)
+
+            tracker = self.badge_trackers[ble_addr]
+            previous_code = tracker.last_code  # Save before check_sequence updates it
+            is_valid, gap = tracker.check_sequence(code, now)
+
+            # Log sequence errors (only if frames actually missed)
+            if not is_valid and previous_code and gap > 0:
+                print(f"⚠️  Badge {ble_addr[-8:]}: Sequence break {previous_code} → {code} "
+                      f"({gap} frame{'s' if gap > 1 else ''} missed)")
+
+            # Stocker la détection actuelle
+            detection_time = datetime.now()
+            self.ble_detections[ble_addr] = {
+                'code': code,
+                'addr': ble_addr,
+                'rssi': rssi,
+                'timestamp': detection_time,
+                'node': node_name
+            }
+
+            # Stocker dans multi-détections pour triangulation (fenêtre de 3 secondes)
+            if ble_addr not in self.ble_multi_detections:
+                self.ble_multi_detections[ble_addr] = []
+
+            # Ajouter la nouvelle détection
+            self.ble_multi_detections[ble_addr].append({
+                'node': node_name,
+                'rssi': rssi,
+                'timestamp': now,
+                'code': code
+            })
+
+            # Nettoyer les détections > 5 secondes
+            self.ble_multi_detections[ble_addr] = [
+                d for d in self.ble_multi_detections[ble_addr]
+                if (now - d['timestamp']) < 5.0
+            ]
+
+            # Calculer et émettre la position du badge
+            self.calculate_and_emit_badge_position(ble_addr, code)
+
+            # Ajouter à l'historique (limité aux 1000 dernières détections)
+            self.ble_history.append({
+                'timestamp': detection_time.isoformat(),
+                'device': ble_addr,
+                'code': code,
+                'node': node_name,
+                'rssi': rssi
+            })
+            if len(self.ble_history) > 1000:
+                self.ble_history.pop(0)
+
+            # Ne plus logger dans le terminal (affichage via page web)
+
+            # Émettre via WebSocket
+            # Utiliser la queue thread-safe pour émission depuis thread CoAP
+            try:
+                socketio_queue.put_nowait(('ble_beacon', {
+                    'device': ble_addr,
+                    'code': code,
+                    'rssi': rssi,
+                    'node': node_name,
+                    'timestamp': detection_time.isoformat()
+                }))
+            except queue.Full:
+                print(f"⚠️ Queue SocketIO pleine, beacon BLE perdu")
+
+        except json.JSONDecodeError as e:
+            print(f"❌ Erreur JSON parsing BLE beacon: {e} (payload: {payload})")
+        except Exception as e:
+            print(f"❌ Erreur parsing BLE beacon: {e} (payload: {payload})")
+
+    def calculate_and_emit_badge_position(self, badge_addr, code):
+        """Calcule la position d'un badge par triangulation RSSI et émet via WebSocket"""
+        try:
+            detections = self.ble_multi_detections.get(badge_addr, [])
+
+            # Besoin d'au moins 2 routeurs pour triangulation
+            if len(detections) < 2:
+                return
+
+            # Filtrer pour garder détections très récentes (< 1 seconde)
+            # Besoin d'au moins 2 routeurs qui détectent dans la même seconde
+            now = time.time()
+            recent_detections = [d for d in detections if (now - d['timestamp']) < 1.0]
+
+            if len(recent_detections) < 2:
+                return
+
+            # IMPORTANT: Garder uniquement la MEILLEURE détection par routeur (éviter duplicates)
+            # Grouper par node et garder le meilleur RSSI pour chaque routeur
+            best_by_router = {}
+            for d in recent_detections:
+                node = d['node']
+                if node not in best_by_router or d['rssi'] > best_by_router[node]['rssi']:
+                    best_by_router[node] = d
+
+            # Convertir en liste et vérifier qu'on a au moins 2 routeurs DIFFÉRENTS
+            unique_detections = list(best_by_router.values())
+
+            if len(unique_detections) < 2:
+                return
+
+            # Trier par RSSI (meilleurs signaux en premier) et garder top 5 routeurs
+            unique_detections.sort(key=lambda d: d['rssi'], reverse=True)
+            top_detections = unique_detections[:5]
+
+            # Calculer position par barycentre pondéré
+            total_weight = 0
+            weighted_x = 0
+            weighted_y = 0
+            rssi_values = {}
+            nodes_with_position = []
+
+            for detection in top_detections:
+                node_name = detection['node']
+                rssi = detection['rssi']
+                rssi_values[node_name] = rssi
+
+                # Récupérer position du node (chercher par nom OU par RLOC16)
+                node_pos = self.node_positions.get(node_name)
+
+                # Si pas trouvé par nom, chercher le RLOC16 correspondant
+                if not node_pos:
+                    # Trouver le RLOC16 à partir du nom via le mapping
+                    rloc16 = self.name_to_rloc16.get(node_name)
+                    if rloc16:
+                        node_pos = self.node_positions.get(rloc16)
+
+                if not node_pos:
+                    continue
+
+                nodes_with_position.append(node_name)
+
+                # Pondération: w = 10^(RSSI/20) (en dB logarithmique)
+                # RSSI typique: -30 dBm (proche) à -80 dBm (loin)
+                weight = 10 ** (rssi / 20.0)
+
+                weighted_x += node_pos['x'] * weight
+                weighted_y += node_pos['y'] * weight
+                total_weight += weight
+
+            if total_weight == 0:
+                return
+
+            # Position finale
+            pos_x = weighted_x / total_weight
+            pos_y = weighted_y / total_weight
+
+            # Confidence basée sur nombre de routeurs
+            confidence = min(100, len(top_detections) * 25)  # 2→50%, 3→75%, 4+→100%
+
+            # Stocker position
+            self.badge_positions[badge_addr] = {
+                'x': pos_x,
+                'y': pos_y,
+                'confidence': confidence,
+                'timestamp': datetime.now()
+            }
+
+            # Émettre via WebSocket
+            socketio.emit('badge_position', {
+                'badge_addr': badge_addr,
+                'code': code,
+                'x': pos_x,
+                'y': pos_y,
+                'confidence': confidence,
+                'rssi_values': rssi_values,
+                'nb_routers': len(top_detections),
+                'timestamp': datetime.now().isoformat()
+            })
+
+            # Log concis: code, routeurs, position
+            router_list = ', '.join(nodes_with_position)
+            print(f"📍 {code}: ({pos_x:.0f},{pos_y:.0f}) {confidence}% [{router_list}]")
+
+        except Exception as e:
+            print(f"❌ Erreur triangulation {code}: {e}")
+
+    def announce_server(self, flash_yellow=False):
+        """Annonce l'adresse du serveur à tous les nodes"""
+        print("\n📢 Annonce du serveur aux nodes...")
+        
+        addresses = self.registry.get_all_addresses()
+        if not addresses:
+            print("⚠️ Aucun node configuré dans adresses.json")
+            return
+        
+        # Si demandé, allumer les LEDs rouges (anciennement jaunes)
+        if flash_yellow:
+            print("💛 Allumage des LEDs rouges...")
+            for addr in addresses:
+                self.send_coap_post(addr, "led", "red:on")
+        
+        # Envoyer server-id à chaque node
+        success_count = 0
+        for name, node_data in self.registry.nodes.items():
+            # Gérer le nouveau format avec dictionnaire
+            if isinstance(node_data, dict):
+                addr = node_data.get('address')
+            else:
+                # Ancien format (compatibilité)
+                addr = node_data
+            
+            if addr and self.send_coap_post(addr, "server-id", "server-id"):
+                print(f"  ✓ Annonce envoyée à {name}")
+                success_count += 1
+            else:
+                print(f"  ❌ Échec annonce à {name}")
+        
+        print(f"📡 Annonce terminée: {success_count}/{len(addresses)} nodes contactés")
+        
+        # Si on a allumé les LEDs rouges, les éteindre après 1 seconde
+        if flash_yellow:
+            def turn_off_red():
+                time.sleep(1)
+                for addr in addresses:
+                    self.send_coap_post(addr, "led", "red:off")
+                print("💛 LEDs rouges éteintes")
+            
+            threading.Thread(target=turn_off_red).start()
+    
+    def delayed_announce(self):
+        """Annonce le serveur après un délai"""
+        time.sleep(2)  # Attendre que le serveur soit bien démarré
+        print("\n🔄 Annonce automatique du serveur...")
+        self.announce_server()
+    
+    def demo_loop(self):
+        """Boucle de démonstration"""
+        print("\n🎭 MODE DÉMO ACTIVÉ")
+        print("   - Flash LED rouge : 500ms ON / 500ms OFF")
+        print("   - Annonce serveur : toutes les 30s")
+        print("   - Tapez 'stop' ou Ctrl+C pour arrêter\n")
+        
+        last_announce = time.time()
+        announce_interval = 30  # secondes
+        
+        flash_count = 0
+        while self.demo_mode and self.running:
+            try:
+                current_time = time.time()
+                
+                # Vérifier si on doit faire une annonce (toutes les 30 secondes)
+                if current_time - last_announce >= announce_interval:
+                    print(f"\r[{datetime.now().strftime('%H:%M:%S')}] 📢 Annonce serveur...                    ")
+                    # Annonce silencieuse
+                    addresses = self.registry.get_all_addresses()
+                    if addresses:
+                        # Créer un socket temporaire pour l'envoi
+                        sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+                        try:
+                            # Flash jaune
+                            for addr in addresses:
+                                sock.sendto(self.create_coap_post_packet("led", "yellow:on"), (addr, COAP_PORT))
+                            # Envoyer server-id
+                            for name, addr in self.registry.nodes.items():
+                                packet = self.create_coap_post_packet("server-id", "server-id")
+                                sock.sendto(packet, (addr, COAP_PORT))
+                            time.sleep(1)
+                            # Éteindre jaune
+                            for addr in addresses:
+                                sock.sendto(self.create_coap_post_packet("led", "yellow:off"), (addr, COAP_PORT))
+                        finally:
+                            sock.close()
+                    last_announce = current_time
+                
+                # Flash continu des LEDs rouges - SILENCIEUX
+                addresses = self.registry.get_all_addresses()
+                if addresses:
+                    # Créer un socket temporaire pour l'envoi
+                    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+                    try:
+                        # Allumer
+                        for addr in addresses:
+                            sock.sendto(self.create_coap_post_packet("led", "red:on"), (addr, COAP_PORT))
+                        time.sleep(0.5)
+                        # Éteindre
+                        for addr in addresses:
+                            sock.sendto(self.create_coap_post_packet("led", "red:off"), (addr, COAP_PORT))
+                        time.sleep(0.5)
+                    finally:
+                        sock.close()
+                
+                # Afficher un indicateur tournant pour montrer que le démo est actif
+                flash_count += 1
+                spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+                print(f"\r{spinner[flash_count % len(spinner)]} Mode démo actif... (stop ou Ctrl+C pour arrêter)", end='', flush=True)
+                    
+            except Exception as e:
+                print(f"\r❌ Erreur dans le mode démo: {e}")
+                self.demo_mode = False
+        
+        print("\r🎭 Mode démo désactivé                                          ")
+    
+    def handle_location_change(self, loc_code: str):
+        """Handler pour les changements de localisation - gère le mode suivi de position"""
+        try:
+            # Chercher si le loc_code correspond à un node connu
+            node_name = None
+            
+            # Essayer de mapper le loc_code vers un nom de node
+            # Par exemple: "s1Z" -> node "s1Z" ou chercher dans les adresses
+            for name, node_data in self.registry.nodes.items():
+                # Vérifier si le nom du node correspond au loc_code
+                if name.lower() == loc_code.lower():
+                    node_name = name
+                    break
+                # Ou si le loc_code est dans le nom
+                elif loc_code.lower() in name.lower():
+                    node_name = name
+                    break
+            
+            # Vérifier si le node est connu et a une adresse
+            node_address = None
+            if node_name and node_name in self.registry.nodes:
+                node_data = self.registry.nodes[node_name]
+                if isinstance(node_data, dict):
+                    node_address = node_data.get('address')
+                else:
+                    node_address = node_data
+            
+            # Si c'est un node connu avec une adresse
+            if node_name and node_address:
+                # Si le mode suivi est actif
+                if self.tracking_mode:
+                    print(f"\n🎯 Mode Suivi: Changement vers node {node_name}")
+                    
+                    # Si c'est une nouvelle node
+                    if self.current_tracking_node != node_name:
+                        self.current_tracking_node = node_name
+                        
+                        # Obtenir les nodes connexes
+                        connected_nodes = self.registry.get_connected_nodes(node_name)
+                        all_nodes = self.registry.get_all_node_names()
+                        
+                        print(f"   Nodes connexes de {node_name}: {connected_nodes}")
+                        
+                        # Flash LED rouge de la node active (200ms)
+                        def flash_red():
+                            self.send_coap_post(node_address, "led", "red:on")
+                            time.sleep(0.2)
+                            self.send_coap_post(node_address, "led", "red:off")
+                        
+                        # Lancer le flash dans un thread pour ne pas bloquer
+                        flash_thread = threading.Thread(target=flash_red)
+                        flash_thread.daemon = True
+                        flash_thread.start()
+                        
+                        # Pour chaque node, allumer ou éteindre selon si elle est connexe
+                        for node in all_nodes:
+                            if node == node_name:
+                                continue  # Skip la node active
+                            
+                            node_data = self.registry.nodes.get(node, {})
+                            if isinstance(node_data, dict):
+                                addr = node_data.get('address')
+                                if addr:
+                                    if node in connected_nodes:
+                                        # Allumer les nodes connexes
+                                        print(f"   💡 Allumer node connexe: {node}")
+                                        self.send_coap_post(addr, "led", "light:on")
+                                        if addr not in self.led_states:
+                                            self.led_states[addr] = {}
+                                        self.led_states[addr]['light'] = True
+                                    else:
+                                        # Éteindre les nodes non-connexes
+                                        print(f"   🔌 Éteindre node non-connexe: {node}")
+                                        self.send_coap_post(addr, "led", "light:off")
+                                        if addr not in self.led_states:
+                                            self.led_states[addr] = {}
+                                        self.led_states[addr]['light'] = False
+                        
+                        # Émettre un événement pour l'interface web
+                        tracking_event = {
+                            'type': 'tracking_update',
+                            'active_node': node_name,
+                            'connected_nodes': connected_nodes,
+                            'timestamp': datetime.now().isoformat()
+                        }
+                        socketio.emit('tracking_update', tracking_event)
+                else:
+                    # Mode normal : faire un flash de la LED rouge
+                    print(f"🔴 Envoi flash LED rouge au node {node_name} ({node_address})")
+                    try:
+                        # Allumer la LED rouge
+                        self.send_coap_post(node_address, "led", "red:on")
+                        
+                        # Attendre 200ms
+                        time.sleep(0.2)
+                        
+                        # Éteindre la LED rouge
+                        self.send_coap_post(node_address, "led", "red:off")
+                        
+                        print(f"   ✅ Flash LED rouge terminé")
+                    except Exception as e:
+                        print(f"   ❌ Erreur envoi commande: {e}")
+            else:
+                print(f"⚠️ Node inconnu ou sans adresse pour loc_code: {loc_code} (ignoré)")
+                
+        except Exception as e:
+            print(f"❌ Erreur dans handle_location_change: {e}")
+    
+    def handle_tb_telemetry_update(self, node_name: str, telemetry: dict):
+        """Handler pour les mises à jour de télémétrie reçues depuis ThingsBoard WebSocket"""
+        try:
+            # Désactivé pour réduire le bruit - ce sont les updates reçues DE ThingsBoard
+            # print(f"🔄 Mise à jour ThingsBoard pour {node_name}: {telemetry}")
+            
+            # Gérer les mises à jour loc_code
+            if 'loc_code' in telemetry:
+                # Émettre via Socket.IO pour l'interface web
+                socketio.emit('loc_code_update', {
+                    'device': node_name,
+                    'loc_code': telemetry['loc_code'],
+                    'timestamp': datetime.now().isoformat()
+                })
+            
+            # Mettre à jour l'état batterie si présent
+            if 'battery_level' in telemetry or 'battery_value' in telemetry:
+                battery_info = self.battery_status.get(node_name, {})
+                
+                if 'battery_level' in telemetry:
+                    battery_info['percentage'] = telemetry['battery_level']
+                if 'battery_value' in telemetry:
+                    battery_info['voltage'] = telemetry['battery_value']
+                    
+                battery_info['timestamp'] = datetime.now()
+                self.battery_status[node_name] = battery_info
+                
+                # Émettre via Socket.IO pour l'interface web
+                socketio.emit('battery_update', {
+                    'node': node_name,
+                    'voltage': battery_info.get('voltage', 0),
+                    'percentage': battery_info.get('percentage', 0),
+                    'timestamp': battery_info['timestamp'].isoformat()
+                })
+            
+            # Mettre à jour l'état des LEDs si présent
+            if 'led_state' in telemetry:
+                led_states = telemetry['led_state']
+                if node_name in self.registry.nodes:
+                    node_data = self.registry.nodes[node_name]
+                    addr = node_data.get('address') if isinstance(node_data, dict) else node_data
+                    
+                    if addr not in self.led_states:
+                        self.led_states[addr] = {}
+                    
+                    # Parser l'état des LEDs (format attendu: {"red": true/false, "light": true/false})
+                    if isinstance(led_states, dict):
+                        for led, state in led_states.items():
+                            self.led_states[addr][led] = state
+                            
+                            # Émettre via Socket.IO
+                            socketio.emit('led_update', {
+                                'node': node_name,
+                                'led': led,
+                                'state': state
+                            })
+            
+            # Traiter les événements bouton
+            if 'button_state' in telemetry:
+                button_state = telemetry['button_state']
+                
+                # Créer un événement bouton
+                event = {
+                    'node': node_name,
+                    'timestamp': datetime.now().isoformat(),
+                    'type': 'button',
+                    'state': button_state
+                }
+                
+                self.button_events.append(event)
+                self.event_count += 1
+                
+                # Émettre via Socket.IO
+                socketio.emit('button_event', event)
+            
+            # Autres données de télémétrie (température, humidité, etc.)
+            if 'temperature' in telemetry or 'humidity' in telemetry:
+                socketio.emit('telemetry_update', {
+                    'node': node_name,
+                    'data': telemetry,
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+        except Exception as e:
+            print(f"❌ Erreur traitement télémétrie ThingsBoard: {e}")
+    
+    def run(self):
+        """Lance le serveur"""
+        print("🌐 Serveur CoAP de contrôle")
+        print(f"   Port: {COAP_PORT}")
+        print("=" * 50)
+        
+        # Connexion à ThingsBoard si configuré
+        if TB_CONFIG['username'] and TB_CONFIG['password']:
+            self.thingsboard.connect()
+        else:
+            print("ℹ️ ThingsBoard non configuré (définir TB_USERNAME et TB_PASSWORD)")
+        
+        # Socket UDP IPv6
+        self.sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        
+        try:
+            self.sock.bind(('::', COAP_PORT))
+            print("✓ Serveur démarré sur toutes les interfaces IPv6")
+        except:
+            # Fallback sur IPv4
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.bind(('', COAP_PORT))
+            print("✓ Serveur démarré en IPv4")
+        
+        print("\n📍 Ressources disponibles:")
+        print("   - /button : reçoit les événements button-pressed")
+        print("   - /server-id : enregistrement des nodes")
+        print("   - /battery : reçoit les rapports de batterie")
+        print("   - /ble-beacon : reçoit les détections BLE beacon")
+        
+        self.running = True
+        
+        # Thread pour les commandes interactives
+        cmd_thread = threading.Thread(target=self.command_loop)
+        cmd_thread.daemon = True
+        cmd_thread.start()
+        
+        # Annoncer le serveur aux nodes après un court délai
+        announce_thread = threading.Thread(target=self.delayed_announce)
+        announce_thread.daemon = True
+        announce_thread.start()
+        
+        print("\n⏳ En attente de messages...\n")
+        
+        try:
+            while self.running:
+                # Recevoir un paquet
+                data, addr = self.sock.recvfrom(4096)
+                
+                # Parser le paquet CoAP
+                packet = self.parse_coap_packet(data)
+                
+                if packet:
+                    self.event_count += 1
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+
+                    # Afficher message CoAP sauf pour ble-beacon (déjà logué dans handle_ble_beacon)
+                    if packet['uri_path'] != 'ble-beacon':
+                        print(f"\n📨 [{timestamp}] Message CoAP #{self.event_count}")
+                        print(f"   Source: {addr[0]}")
+                        print(f"   URI: /{packet['uri_path']}")
+                        print(f"   Code: {packet['code']}")
+
+                    # Mettre à jour le statut du node
+                    if addr[0] not in self.node_status:
+                        self.node_status[addr[0]] = {}
+                    self.node_status[addr[0]]['last_seen'] = datetime.now()
+
+                    # Traiter selon l'URI
+                    if packet['uri_path'] == 'battery':
+                        # Traiter le rapport batterie
+                        message = ""
+                        if packet['payload']:
+                            message = packet['payload'].decode('utf-8', errors='ignore')
+                            print(f"   Payload: '{message}'")
+                        else:
+                            print(f"   Payload: (vide)")
+                        self.handle_battery_report(addr[0], message)
+                    elif packet['uri_path'] == 'button':
+                        # Traiter l'événement button même sans payload
+                        message = ""
+                        if packet['payload']:
+                            message = packet['payload'].decode('utf-8', errors='ignore')
+                            print(f"   Payload: '{message}'")
+                        else:
+                            print(f"   Payload: (vide)")
+                        self.handle_button_event(addr[0], message)
+                    elif packet['uri_path'] == 'server-id':
+                        message = ""
+                        if packet['payload']:
+                            message = packet['payload'].decode('utf-8', errors='ignore')
+                            print(f"   Payload: '{message}'")
+                        self.handle_server_id(addr[0], message)
+                    elif packet['uri_path'] == 'ble-beacon':
+                        message = ""
+                        if packet['payload']:
+                            message = packet['payload'].decode('utf-8', errors='ignore')
+                        self.handle_ble_beacon(addr[0], message)
+                    else:
+                        # Pour les autres URIs, afficher le payload s'il existe
+                        if packet['payload']:
+                            message = packet['payload'].decode('utf-8', errors='ignore')
+                            print(f"   Payload: '{message}'")
+                    
+                    # Envoyer ACK si nécessaire
+                    if packet['type'] == 0:  # CON (Confirmable)
+                        response = self.create_coap_response(packet['message_id'])
+                        self.sock.sendto(response, addr)
+                        print("   ← ACK envoyé")
+                        
+        except KeyboardInterrupt:
+            print("\n\n✋ Arrêt du serveur")
+        finally:
+            self.running = False
+            if self.sock:
+                self.sock.close()
+            if self.thingsboard.connected:
+                self.thingsboard.disconnect()
+            print(f"📊 Total événements: {self.event_count}")
+    
+    def show_help(self):
+        """Affiche l'aide des commandes"""
+        print("\n🎮 Commandes disponibles:")
+        print("  help     - Afficher cette aide")
+        print("  list     - Lister tous les nodes")
+        print("  reload   - Recharger adresses.json")
+        print("  announce - Annoncer le serveur aux nodes")
+        print("  flash    - Faire clignoter tous les nodes (1 fois)")
+        print("  path [vitesse_ms] - Chemin lumineux (défaut: 1000ms)")
+        print("    Exemple: path 500 pour 500ms par node")
+        print("  blink <node|all> <led> [période_ms] [duty_%] - Faire clignoter une LED")
+        print("    LEDs: red, light, all")
+        print("    Exemples: blink d2C red          (1000ms, 50%)")
+        print("              blink all red 500 25   (500ms, 25%)")
+        print("              blink d3D light 2000 75 (2000ms, 75%)")
+        print("  blink stop [node|all] - Arrêter le clignotement")
+        print("  led <node> <cmd> - Envoyer commande LED (contrôle direct)")
+        print("    Commandes: red:on/off, light:on/off, all:on/off")
+        print("  light on/off - Allumer/éteindre toutes les LED externes")
+        print("  battery  - Afficher l'état des batteries")
+        print("  beacon   - Afficher les beacons BLE détectés")
+        print("  quality  - Statistiques de qualité des badges (séquence po1-po0)")
+        print("  tb       - État de la connexion ThingsBoard")
+        print("  tb refresh - Rafraîchir le cache des assets ThingsBoard")
+        print("  tb reconnect - Forcer la reconnexion à ThingsBoard")
+        print("  tb devices - Afficher les devices et leurs positions loc_code")
+        print("  demo     - Mode démo (announce + flash toutes les 10s)")
+        print("  stop     - Arrêter le mode démo")
+        print("  quit     - Quitter")
+        print()
+    
+    def command_loop(self):
+        """Boucle de commandes interactives"""
+        time.sleep(1)  # Attendre que le serveur démarre
+        
+        self.show_help()
+        
+        while self.running:
+            try:
+                cmd = input("coap> ").strip()
+                
+                if cmd == "quit":
+                    self.running = False
+                    self.demo_mode = False
+                    break
+                elif cmd == "help":
+                    self.show_help()
+                elif cmd == "list":
+                    print("\n📋 Nodes enregistrés:")
+                    for name, node_data in self.registry.nodes.items():
+                        if isinstance(node_data, dict):
+                            addr = node_data.get('address', '')
+                            ordre = node_data.get('ordre', 0)
+                            ordre_str = f" (ordre: {ordre})" if ordre > 0 else " (pas dans le chemin)"
+                            print(f"  {name}: {addr}{ordre_str}")
+                        else:
+                            # Ancien format
+                            print(f"  {name}: {node_data}")
+                    print()
+                elif cmd == "reload":
+                    self.registry.load()
+                elif cmd == "announce":
+                    self.announce_server()
+                elif cmd == "battery":
+                    # Afficher l'état des batteries
+                    print("\n🔋 État des batteries:")
+                    if not self.battery_status:
+                        print("   Aucun rapport de batterie reçu")
+                    else:
+                        for node_name, data in self.battery_status.items():
+                            if data['current']:
+                                current = data['current']
+                                age = (datetime.now() - current['timestamp']).total_seconds()
+                                status_icon = "🔋" if current['percentage'] > 20 else "🪫"
+                                print(f"   {status_icon} {node_name}: {current['voltage']:.2f}V ({current['percentage']}%) - il y a {int(age)}s")
+                                
+                                # Afficher l'historique récent si demandé
+                                if len(data['history']) > 1:
+                                    voltages = [h['voltage'] for h in data['history']]
+                                    avg_voltage = sum(voltages) / len(voltages)
+                                    trend = "📈" if voltages[-1] > voltages[0] else "📉" if voltages[-1] < voltages[0] else "➡️"
+                                    print(f"      Moyenne: {avg_voltage:.2f}V {trend}")
+                    print()
+                elif cmd == "beacon":
+                    # Afficher les détections BLE beacon
+                    print("\n📡 Détections BLE Beacon:")
+                    if not self.ble_detections:
+                        print("   Aucun beacon détecté")
+                    else:
+                        for code, data in self.ble_detections.items():
+                            age = (datetime.now() - data['timestamp']).total_seconds()
+                            print(f"   {code}: {data['addr']} (RSSI: {data['rssi']} dBm)")
+                            print(f"      Node: {data['node']} - Il y a {int(age)}s")
+                    print()
+
+                elif cmd == "quality":
+                    # Afficher les statistiques de qualité des badges
+                    print("\n📊 Badge Quality Report\n")
+                    if not self.badge_trackers:
+                        print("   Aucun badge tracké")
+                    else:
+                        for addr, tracker in self.badge_trackers.items():
+                            stats = tracker.get_stats()
+                            print(f"Badge {addr[-8:]}:")
+                            print(f"  Runtime         : {int(stats['runtime_sec'])}s")
+                            print(f"  Frames expected : {stats['total_expected']}")
+                            print(f"  Frames received : {stats['received']}")
+                            print(f"  Frames missed   : {stats['missed']}")
+                            print(f"  Success rate    : {stats['success_rate']:.1f}%")
+                            print(f"  Last code       : {stats['last_code']}")
+                            print()
+
+                elif cmd == "flash":
+                    # Faire clignoter toutes les LEDs externes
+                    print("💡 Flash toutes les LED externes...")
+                    addresses = self.registry.get_all_addresses()
+                    for addr in addresses:
+                        self.send_coap_post(addr, "led", "light:on")
+                    time.sleep(1)
+                    for addr in addresses:
+                        self.send_coap_post(addr, "led", "light:off")
+                elif cmd.startswith("path") or cmd.startswith("chemin"):
+                    # Chemin lumineux avec vitesse paramétrable
+                    parts = cmd.split()
+                    speed_ms = 1000  # Vitesse par défaut
+                    
+                    # Parser la vitesse si fournie
+                    if len(parts) >= 2:
+                        try:
+                            speed_ms = int(parts[1])
+                            if speed_ms < 100:
+                                speed_ms = 100  # Minimum 100ms
+                            elif speed_ms > 10000:
+                                speed_ms = 10000  # Maximum 10s
+                        except ValueError:
+                            print("⚠️ Vitesse invalide, utilisation de 1000ms par défaut")
+                    
+                    print(f"🌈 Chemin lumineux démarré (vitesse: {speed_ms}ms)")
+                    print("   Appuyez sur Ctrl+C pour arrêter...")
+                    
+                    # Récupérer les nodes triés par ordre
+                    sorted_nodes = self.registry.get_nodes_sorted_by_order()
+                    
+                    if not sorted_nodes:
+                        print("❌ Aucun node avec un ordre défini (ordre > 0)")
+                    else:
+                        print(f"   Nodes dans l'ordre: {[n['name'] for n in sorted_nodes]}")
+                        
+                        try:
+                            while True:
+                                for node in sorted_nodes:
+                                    # Allumer le node actuel
+                                    self.send_coap_post(node['address'], "led", "light:on")
+                                    time.sleep(speed_ms / 1000.0)
+                                    # Éteindre le node actuel
+                                    self.send_coap_post(node['address'], "led", "light:off")
+                                    time.sleep(50 / 1000.0)  # Petite pause entre nodes
+                        except KeyboardInterrupt:
+                            print("\n⏹️ Chemin lumineux arrêté")
+                            # Éteindre toutes les LEDs
+                            for node in sorted_nodes:
+                                self.send_coap_post(node['address'], "led", "light:off")
+                elif cmd.startswith("blink"):
+                    # Commande blink avec paramètres optionnels
+                    parts = cmd.split()
+                    
+                    # Vérifier si c'est une commande stop
+                    if len(parts) >= 2 and parts[1] == "stop":
+                        # blink stop [node|all]
+                        target = parts[2] if len(parts) >= 3 else "all"
+                        
+                        if target == "all":
+                            print("⏹️ Arrêt du clignotement sur tous les nodes...")
+                            addresses = self.registry.get_all_addresses()
+                            for addr in addresses:
+                                self.send_coap_post(addr, "blink", "stop")
+                        else:
+                            # Arrêter sur un node spécifique
+                            if target in self.registry.nodes:
+                                node_data = self.registry.nodes[target]
+                                if isinstance(node_data, dict):
+                                    addr = node_data.get('address')
+                                else:
+                                    addr = node_data
+                                
+                                if addr:
+                                    print(f"⏹️ Arrêt du clignotement sur {target}...")
+                                    self.send_coap_post(addr, "blink", "stop")
+                                else:
+                                    print(f"❌ Adresse manquante pour '{target}'")
+                            else:
+                                print(f"❌ Node '{target}' non trouvé")
+                    else:
+                        # Commande blink normale
+                        if len(parts) < 3:
+                            print("❌ Usage: blink <node|all> <led> [période_ms] [duty_%]")
+                            print("         blink stop [node|all]")
+                        else:
+                            target = parts[1]  # node ou "all"
+                            led_type = parts[2]  # red, light, all
+                            period_ms = parts[3] if len(parts) >= 4 else "1000"
+                            duty_cycle = parts[4] if len(parts) >= 5 else "50"
+                            
+                            # Construire le payload pour la ressource /blink
+                            payload = f"{led_type}:{period_ms}:{duty_cycle}"
+                            
+                            if target == "all":
+                                print(f"💫 Clignotement {led_type} sur tous les nodes ({period_ms}ms, {duty_cycle}%)...")
+                                addresses = self.registry.get_all_addresses()
+                                for addr in addresses:
+                                    self.send_coap_post(addr, "blink", payload)
+                            else:
+                                # Envoyer à un node spécifique
+                                if target in self.registry.nodes:
+                                    node_data = self.registry.nodes[target]
+                                    if isinstance(node_data, dict):
+                                        addr = node_data.get('address')
+                                    else:
+                                        addr = node_data
+                                    
+                                    if addr:
+                                        print(f"💫 Clignotement {led_type} sur {target} ({period_ms}ms, {duty_cycle}%)...")
+                                        self.send_coap_post(addr, "blink", payload)
+                                    else:
+                                        print(f"❌ Adresse manquante pour '{target}'")
+                                else:
+                                    print(f"❌ Node '{target}' non trouvé")
+                elif cmd == "demo":
+                    if not self.demo_mode:
+                        self.demo_mode = True
+                        # Lancer le thread de démo
+                        demo_thread = threading.Thread(target=self.demo_loop)
+                        demo_thread.daemon = True
+                        demo_thread.start()
+                    else:
+                        print("⚠️ Mode démo déjà actif. Utilisez 'stop' ou Ctrl+C pour l'arrêter.")
+                elif cmd == "stop":
+                    if self.demo_mode:
+                        print("⏹️ Arrêt du mode démo...")
+                        self.demo_mode = False
+                        time.sleep(1)  # Laisser le temps au thread de s'arrêter
+                    else:
+                        print("ℹ️ Le mode démo n'est pas actif")
+                elif cmd == "tb":
+                    # État ThingsBoard
+                    if self.thingsboard.connected:
+                        print(f"✅ ThingsBoard: Connecté à {TB_CONFIG['url']}")
+                        print(f"   User: {TB_CONFIG['username']}")
+                        
+                        # Afficher l'âge du token
+                        token_age = int(time.time() - self.thingsboard.token_timestamp)
+                        token_remaining = max(0, self.thingsboard.token_lifetime - token_age)
+                        print(f"   Token: valide encore {token_remaining}s ({token_age}s d'âge)")
+                        
+                        print(f"   Assets en cache: {len(self.thingsboard.asset_cache)}")
+                        if self.thingsboard.asset_cache:
+                            print("   Assets:")
+                            for name in sorted(self.thingsboard.asset_cache.keys()):
+                                print(f"     - {name}")
+                        
+                        print(f"\n   Devices en cache: {len(self.thingsboard.device_cache)}")
+                        if self.thingsboard.device_cache:
+                            print("   Devices avec loc_code:")
+                            for name in sorted(self.thingsboard.device_cache.keys()):
+                                loc_info = self.thingsboard.device_loc_code.get(name, {})
+                                loc_value = loc_info.get('value', 'N/A')
+                                if loc_value and loc_value != 'N/A':
+                                    ts = loc_info.get('timestamp')
+                                    if ts:
+                                        age = int((time.time() * 1000 - ts) / 1000)
+                                        print(f"     📍 {name}: {loc_value} (il y a {age}s)")
+                                    else:
+                                        print(f"     📍 {name}: {loc_value}")
+                                else:
+                                    print(f"     ○ {name}: (pas de position)")
+                    else:
+                        print("❌ ThingsBoard: Non connecté")
+                elif cmd == "tb refresh":
+                    # Rafraîchir le cache des assets
+                    if self.thingsboard.connected:
+                        self.thingsboard.refresh_asset_cache()
+                    else:
+                        print("❌ ThingsBoard non connecté")
+                elif cmd == "tb devices":
+                    # Afficher l'état des devices
+                    if self.thingsboard.connected:
+                        print("\n📱 Devices ThingsBoard:")
+                        if not self.thingsboard.device_cache:
+                            print("   Aucun device trouvé")
+                        else:
+                            print(f"   Total: {len(self.thingsboard.device_cache)} devices")
+                            print("\n   📍 Positions LOC_CODE:")
+                            print("   " + "="*50)
+                            
+                            # Trier par nom
+                            for name in sorted(self.thingsboard.device_cache.keys()):
+                                loc_info = self.thingsboard.device_loc_code.get(name, {})
+                                loc_value = loc_info.get('value')
+                                
+                                if loc_value:
+                                    ts = loc_info.get('timestamp')
+                                    if ts:
+                                        age = int((time.time() * 1000 - ts) / 1000)
+                                        if age < 60:
+                                            age_str = f"{age}s"
+                                        elif age < 3600:
+                                            age_str = f"{age//60}min"
+                                        else:
+                                            age_str = f"{age//3600}h"
+                                        
+                                        # Icône selon l'âge
+                                        if age < 10:
+                                            icon = "🟢"  # Très récent
+                                        elif age < 60:
+                                            icon = "🟡"  # Récent
+                                        else:
+                                            icon = "🔴"  # Ancien
+                                        
+                                        print(f"   {icon} {name:20} : {loc_value:15} (il y a {age_str})")
+                                    else:
+                                        print(f"   🔵 {name:20} : {loc_value:15}")
+                                else:
+                                    print(f"   ⚪ {name:20} : {'Pas de position':15}")
+                            
+                            # Statistiques
+                            with_position = sum(1 for loc in self.thingsboard.device_loc_code.values() if loc.get('value'))
+                            print("\n   📊 Statistiques:")
+                            print(f"      • Devices avec position: {with_position}/{len(self.thingsboard.device_cache)}")
+                            
+                            # Afficher les devices DALKIA spécifiquement
+                            dalkia_devices = [name for name in self.thingsboard.device_cache.keys() if 'DALKIA' in name.upper()]
+                            if dalkia_devices:
+                                print(f"\n   🏷️ Badges DALKIA détectés: {len(dalkia_devices)}")
+                                for name in sorted(dalkia_devices):
+                                    loc_info = self.thingsboard.device_loc_code.get(name, {})
+                                    loc_value = loc_info.get('value', 'N/A')
+                                    print(f"      • {name}: {loc_value}")
+                    else:
+                        print("❌ ThingsBoard non connecté")
+                elif cmd == "tb reconnect":
+                    # Forcer la reconnexion
+                    print("🔄 Reconnexion à ThingsBoard...")
+                    if self.thingsboard.reconnect():
+                        print("✅ Reconnexion réussie")
+                    else:
+                        print("❌ Échec de la reconnexion")
+                elif cmd.startswith("light "):
+                    # Commande light pour tous les nodes
+                    parts = cmd.split()
+                    if len(parts) >= 2:
+                        action = parts[1]
+                        if action in ["on", "off"]:
+                            print(f"💡 Envoi commande light:{action} à tous les nodes...")
+                            addresses = self.registry.get_all_addresses()
+                            for addr in addresses:
+                                self.send_coap_post(addr, "led", f"light:{action}")
+                        else:
+                            print("❌ Usage: light on/off")
+                elif cmd.startswith("led "):
+                    parts = cmd.split()
+                    if len(parts) >= 3:
+                        node_name = parts[1]
+                        led_cmd = parts[2]
+                        if node_name in self.registry.nodes:
+                            node_data = self.registry.nodes[node_name]
+                            # Gérer le nouveau format avec dictionnaire
+                            if isinstance(node_data, dict):
+                                addr = node_data.get('address')
+                            else:
+                                # Ancien format (compatibilité)
+                                addr = node_data
+                            
+                            if addr:
+                                self.send_coap_post(addr, "led", led_cmd)
+                            else:
+                                print(f"❌ Adresse manquante pour '{node_name}'")
+                        else:
+                            print(f"❌ Node '{node_name}' non trouvé")
+                else:
+                    if cmd:
+                        print("❌ Commande inconnue")
+                        
+            except EOFError:
+                break
+            except KeyboardInterrupt:
+                if self.demo_mode:
+                    print("\n\n⏹️ Arrêt du mode démo...")
+                    self.demo_mode = False
+                    time.sleep(1)  # Laisser le temps au thread de s'arrêter
+                    print()  # Nouvelle ligne pour le prompt
+                else:
+                    print("\n")
+                    break
+            except Exception as e:
+                print(f"Erreur: {e}")
+
+# Instances globales pour les routes Flask
+coap_server = None
+network_scanner = None
+network_topology_data = None
+topology_lock = threading.Lock()
+
+# Fonction pour rafraîchir la topologie en arrière-plan
+def refresh_topology_background():
+    """Rafraîchit la topologie du réseau en arrière-plan"""
+    global network_topology_data
+
+    try:
+        # Créer une nouvelle boucle d'événements pour ce thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        # Charger les noms depuis adresses.json
+        address_names = {}
+        try:
+            with open('adresses.json', 'r') as f:
+                data = json.load(f)
+                nodes = data.get('nodes', {})
+                for node_name, node_data in nodes.items():
+                    if isinstance(node_data, dict):
+                        addr = node_data.get('address')
+                        if addr:
+                            address_names[addr] = node_name
+        except Exception as e:
+            print(f"⚠️ Erreur chargement noms depuis adresses.json: {e}")
+
+        # Créer le scanner avec les adresses connues et le mapping des noms
+        known_addresses = coap_server.registry.get_all_addresses() if coap_server else []
+        scanner = OpenThreadScanner(known_addresses=known_addresses, address_names=address_names)
+
+        # Scanner le réseau
+        loop.run_until_complete(scanner.build_topology())
+
+        # Calculer les distances en sauts depuis le leader
+        scanner.topology.calculate_hop_distances()
+
+        # Convertir en JSON
+        with topology_lock:
+            network_topology_data = json.loads(scanner.topology.to_json())
+
+        # Mettre à jour le mapping nom → RLOC16 pour la triangulation
+        if coap_server:
+            coap_server.name_to_rloc16.clear()
+            for node in scanner.topology.nodes.values():
+                if node.name and node.rloc16:
+                    coap_server.name_to_rloc16[node.name] = node.rloc16
+            print(f"📍 Mapping nom→RLOC16 mis à jour: {len(coap_server.name_to_rloc16)} entrées")
+
+        # Émettre via WebSocket
+        socketio.emit('topology_update', network_topology_data)
+
+        # Afficher les nœuds découverts avec leur nom
+        node_count = len(scanner.topology.nodes)
+        nodes_with_names = [n for n in scanner.topology.nodes.values() if n.name]
+        print(f"✅ Topologie rafraîchie: {node_count} nœuds ({len(nodes_with_names)} nommés)")
+        for node in scanner.topology.nodes.values():
+            node_label = f"{node.name} ({node.rloc16})" if node.name else node.rloc16
+            print(f"   • {node_label} - {node.role}")
+
+        loop.close()
+
+    except Exception as e:
+        print(f"❌ Erreur rafraîchissement topologie: {e}")
+        import traceback
+        traceback.print_exc()
+
+# Routes Flask
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/beacons')
+def beacons_page():
+    """Page de suivi des beacons BLE détectés"""
+    return render_template('beacons.html')
+
+@app.route('/ble_debug')
+def ble_debug_page():
+    """Page de debug BLE temps réel"""
+    return render_template('ble_debug.html')
+
+@app.route('/devices')
+def devices_page():
+    """Page de suivi des devices et leurs positions"""
+    return render_template('devices.html')
+
+@app.route('/network-map')
+def network_map_page():
+    """Page de cartographie du réseau OpenThread"""
+    return render_template('network_map.html')
+
+@app.route('/audio-control')
+def audio_control_page():
+    """Page de contrôle audio des nodes PTI (ancienne interface)"""
+    return render_template('audio_control.html')
+
+@app.route('/audio-library')
+def audio_library_page():
+    """Interface web pour la bibliothèque audio"""
+    return render_template('audio_library.html')
+
+@app.route('/api/topology')
+def get_topology():
+    """Retourne la topologie actuelle du réseau"""
+    with topology_lock:
+        if network_topology_data:
+            return jsonify(network_topology_data)
+        else:
+            # Si pas encore de données, retourner une structure vide
+            return jsonify({
+                'network_name': None,
+                'partition_id': None,
+                'last_update': None,
+                'nodes': [],
+                'statistics': {
+                    'total_nodes': 0,
+                    'leaders': 0,
+                    'routers': 0,
+                    'children': 0,
+                    'max_depth': 0
+                },
+                'hierarchy': {}
+            })
+
+@app.route('/api/refresh_topology', methods=['POST'])
+def refresh_topology():
+    """Lance un scan du réseau et rafraîchit la topologie"""
+    # Lancer dans un thread pour ne pas bloquer
+    thread = threading.Thread(target=refresh_topology_background)
+    thread.daemon = True
+    thread.start()
+    return jsonify({'status': 'started'})
+
+@app.route('/api/nodes')
+def get_nodes():
+    """Retourne la liste des nodes avec leurs états"""
+    nodes_data = []
+    for name, node_data in coap_server.registry.nodes.items():
+        if isinstance(node_data, dict):
+            addr = node_data.get('address')
+            ordre = node_data.get('ordre', 0)
+        else:
+            addr = node_data
+            ordre = 0
+        
+        # Récupérer l'état de la batterie
+        battery = None
+        if name in coap_server.battery_status and coap_server.battery_status[name]['current']:
+            current = coap_server.battery_status[name]['current']
+            battery = {
+                'voltage': current['voltage'],
+                'percentage': current['percentage'],
+                'timestamp': current['timestamp'].isoformat()
+            }
+        
+        # Récupérer l'état des LEDs
+        led_states = coap_server.led_states.get(addr, {})
+        
+        nodes_data.append({
+            'name': name,
+            'address': addr,
+            'ordre': ordre,
+            'battery': battery,
+            'leds': {
+                'red': led_states.get('red', False),
+                'light': led_states.get('light', False)
+            },
+            'online': addr in coap_server.node_status and 
+                     (datetime.now() - coap_server.node_status[addr].get('last_seen', datetime.min)).total_seconds() < 120
+        })
+    
+    return jsonify(nodes_data)
+
+@app.route('/api/devices')
+def get_devices():
+    """Retourne la liste des devices ThingsBoard avec leurs positions loc_code"""
+    devices_data = []
+    
+    if coap_server.thingsboard.connected:
+        for device_name, device_id in coap_server.thingsboard.device_cache.items():
+            loc_info = coap_server.thingsboard.device_loc_code.get(device_name, {})
+            loc_value = loc_info.get('value')
+            loc_timestamp = loc_info.get('timestamp')
+            
+            # Calculer l'âge de la dernière position
+            age_seconds = None
+            if loc_timestamp:
+                age_seconds = int((time.time() * 1000 - loc_timestamp) / 1000)
+            
+            devices_data.append({
+                'name': device_name,
+                'id': device_id,
+                'loc_code': loc_value,
+                'loc_timestamp': loc_timestamp,
+                'age_seconds': age_seconds,
+                'is_dalkia': 'DALKIA' in device_name.upper()
+            })
+    
+    # Trier par nom
+    devices_data.sort(key=lambda x: x['name'])
+    
+    return jsonify(devices_data)
+
+@app.route('/api/command', methods=['POST'])
+def send_command():
+    """Envoie une commande à un ou plusieurs nodes"""
+    data = request.json
+    command_type = data.get('type')
+    target = data.get('target')  # 'all' ou nom du node
+    
+    if command_type == 'led':
+        led = data.get('led')  # red, light, all
+        action = data.get('action')  # on, off
+        
+        if target == 'all':
+            addresses = coap_server.registry.get_all_addresses()
+            for addr in addresses:
+                coap_server.send_coap_post(addr, "led", f"{led}:{action}")
+                # Mettre à jour l'état local
+                if addr not in coap_server.led_states:
+                    coap_server.led_states[addr] = {}
+                if led == 'all':
+                    coap_server.led_states[addr]['red'] = (action == 'on')
+                    coap_server.led_states[addr]['light'] = (action == 'on')
+                else:
+                    coap_server.led_states[addr][led] = (action == 'on')
+        else:
+            # Envoyer à un node spécifique
+            if target in coap_server.registry.nodes:
+                node_data = coap_server.registry.nodes[target]
+                if isinstance(node_data, dict):
+                    addr = node_data.get('address')
+                else:
+                    addr = node_data
+                
+                if addr:
+                    coap_server.send_coap_post(addr, "led", f"{led}:{action}")
+                    # Mettre à jour l'état local
+                    if addr not in coap_server.led_states:
+                        coap_server.led_states[addr] = {}
+                    if led == 'all':
+                        coap_server.led_states[addr]['red'] = (action == 'on')
+                        coap_server.led_states[addr]['light'] = (action == 'on')
+                    else:
+                        coap_server.led_states[addr][led] = (action == 'on')
+                    
+                    # Émettre la mise à jour via WebSocket
+                    socketio.emit('led_update', {
+                        'node': target,
+                        'led': led,
+                        'state': action == 'on'
+                    })
+    
+    elif command_type == 'tracking_mode':
+        # Activer/désactiver le mode suivi de position
+        action = data.get('action')  # 'start' ou 'stop'
+        
+        if action == 'start':
+            coap_server.tracking_mode = True
+            coap_server.current_tracking_node = None
+            print("🎯 Mode Suivi de Position ACTIVÉ")
+            
+            # Allumer toutes les LEDs au démarrage
+            addresses = coap_server.registry.get_all_addresses()
+            for addr in addresses:
+                coap_server.send_coap_post(addr, "led", "light:on")
+                if addr not in coap_server.led_states:
+                    coap_server.led_states[addr] = {}
+                coap_server.led_states[addr]['light'] = True
+            
+            # Émettre l'événement d'activation
+            socketio.emit('tracking_mode_status', {
+                'active': True,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+        elif action == 'stop':
+            coap_server.tracking_mode = False
+            coap_server.current_tracking_node = None
+            print("🛑 Mode Suivi de Position DÉSACTIVÉ")
+            
+            # Éteindre toutes les LEDs à l'arrêt
+            addresses = coap_server.registry.get_all_addresses()
+            for addr in addresses:
+                coap_server.send_coap_post(addr, "led", "light:off")
+                coap_server.send_coap_post(addr, "blink_stop", "")
+                if addr not in coap_server.led_states:
+                    coap_server.led_states[addr] = {}
+                coap_server.led_states[addr]['light'] = False
+            
+            # Émettre l'événement de désactivation
+            socketio.emit('tracking_mode_status', {
+                'active': False,
+                'timestamp': datetime.now().isoformat()
+            })
+    
+    elif command_type == 'blink':
+        led = data.get('led')
+        period = data.get('period', 1000)
+        duty = data.get('duty', 50)
+        
+        payload = f"{led}:{period}:{duty}"
+        
+        if target == 'all':
+            addresses = coap_server.registry.get_all_addresses()
+            for addr in addresses:
+                coap_server.send_coap_post(addr, "blink", payload)
+        else:
+            if target in coap_server.registry.nodes:
+                node_data = coap_server.registry.nodes[target]
+                if isinstance(node_data, dict):
+                    addr = node_data.get('address')
+                else:
+                    addr = node_data
+                if addr:
+                    coap_server.send_coap_post(addr, "blink", payload)
+    
+    elif command_type == 'blink_stop':
+        if target == 'all':
+            addresses = coap_server.registry.get_all_addresses()
+            for addr in addresses:
+                coap_server.send_coap_post(addr, "blink", "stop")
+        else:
+            if target in coap_server.registry.nodes:
+                node_data = coap_server.registry.nodes[target]
+                if isinstance(node_data, dict):
+                    addr = node_data.get('address')
+                else:
+                    addr = node_data
+                if addr:
+                    coap_server.send_coap_post(addr, "blink", "stop")
+    
+    elif command_type == 'announce':
+        coap_server.announce_server(flash_yellow=data.get('flash', False))
+    
+    elif command_type == 'demo':
+        if not coap_server.demo_mode:
+            coap_server.demo_mode = True
+            demo_thread = threading.Thread(target=coap_server.demo_loop)
+            demo_thread.daemon = True
+            demo_thread.start()
+            socketio.emit('demo_status', {'active': True})
+    
+    elif command_type == 'demo_stop':
+        coap_server.demo_mode = False
+        socketio.emit('demo_status', {'active': False})
+    
+    elif command_type == 'path':
+        speed = data.get('speed', 1000)
+        # Implémenter le chemin lumineux dans un thread
+        def run_path():
+            sorted_nodes = coap_server.registry.get_nodes_sorted_by_order()
+            if sorted_nodes:
+                for _ in range(3):  # 3 cycles
+                    for node in sorted_nodes:
+                        coap_server.send_coap_post(node['address'], "led", "light:on")
+                        time.sleep(speed / 1000.0)
+                        coap_server.send_coap_post(node['address'], "led", "light:off")
+                        time.sleep(0.05)
+        
+        path_thread = threading.Thread(target=run_path)
+        path_thread.daemon = True
+        path_thread.start()
+    
+    return jsonify({'status': 'success'})
+
+@app.route('/api/events')
+def get_events():
+    """Retourne l'historique des événements boutons"""
+    return jsonify(list(coap_server.button_events))
+
+@app.route('/api/audio_command', methods=['POST'])
+def send_audio_command():
+    """Envoie une commande audio CoAP aux nodes (asynchrone pour ne pas bloquer SocketIO)"""
+    data = request.json
+    node_target = data.get('node')  # 'all' ou nom du node
+    command = data.get('command')   # 'play:X' ou 'stop'
+
+    if not command:
+        return jsonify({'success': False, 'error': 'Missing command'}), 400
+
+    # Fonction interne pour envoi asynchrone (ne bloque pas le thread Flask/SocketIO)
+    def send_audio_async():
+        try:
+            if node_target == 'all':
+                # Envoyer à tous les nodes
+                addresses = coap_server.registry.get_all_addresses()
+                for addr in addresses:
+                    coap_server.send_coap_post(addr, "audio", command)
+            else:
+                # Envoyer à un node spécifique
+                if node_target in coap_server.registry.nodes:
+                    node_data = coap_server.registry.nodes[node_target]
+                    if isinstance(node_data, dict):
+                        addr = node_data.get('address')
+                    else:
+                        addr = node_data
+
+                    if addr:
+                        coap_server.send_coap_post(addr, "audio", command)
+                    else:
+                        print(f"⚠️ Audio command: Node '{node_target}' address not found")
+                else:
+                    print(f"⚠️ Audio command: Node '{node_target}' not found")
+        except Exception as e:
+            print(f"❌ Erreur envoi audio async: {e}")
+
+    # Lancer dans un thread séparé pour ne pas bloquer Flask/SocketIO
+    # Cela permet à socketio.emit('ble_frame') de fonctionner en temps réel
+    audio_thread = threading.Thread(target=send_audio_async)
+    audio_thread.daemon = True
+    audio_thread.start()
+
+    # Retourner IMMÉDIATEMENT sans attendre l'envoi CoAP
+    # Le thread Flask est libéré → SocketIO peut diffuser les trames BLE en temps réel
+    return jsonify({
+        'success': True,
+        'status': 'sent',
+        'command': command,
+        'target': node_target
+    })
+
+@app.route('/api/battery_history/<node_name>')
+def get_battery_history(node_name):
+    """Retourne l'historique de batterie d'un node"""
+    if node_name in coap_server.battery_status:
+        history = coap_server.battery_status[node_name]['history']
+        data = [{
+            'timestamp': h['timestamp'].isoformat(),
+            'voltage': h['voltage'],
+            'percentage': h['percentage']
+        } for h in history]
+        return jsonify(data)
+    return jsonify([])
+
+@app.route('/api/ble_history')
+def get_ble_history():
+    """Retourne l'historique complet des détections BLE"""
+    # Retourner les 200 dernières détections, triées par timestamp décroissant
+    history = sorted(coap_server.ble_history, key=lambda x: x['timestamp'], reverse=True)[:200]
+    return jsonify(history)
+
+@app.route('/api/badge_positions')
+def get_badge_positions():
+    """Retourne les positions actuelles de tous les badges"""
+    positions = []
+    now = datetime.now()
+
+    for badge_addr, pos_data in coap_server.badge_positions.items():
+        # Calculer l'âge de la position
+        age_seconds = (now - pos_data['timestamp']).total_seconds()
+
+        # Ne retourner que les positions récentes (< 10 secondes)
+        if age_seconds < 10:
+            # Récupérer le dernier code connu
+            badge_detection = coap_server.ble_detections.get(badge_addr, {})
+            code = badge_detection.get('code', 'unknown')
+
+            positions.append({
+                'badge_addr': badge_addr,
+                'code': code,
+                'x': pos_data['x'],
+                'y': pos_data['y'],
+                'confidence': pos_data['confidence'],
+                'age_seconds': age_seconds,
+                'timestamp': pos_data['timestamp'].isoformat()
+            })
+
+    return jsonify(positions)
+
+@app.route('/api/node_positions', methods=['GET', 'POST'])
+def handle_node_positions():
+    """GET: Retourne les positions des nodes. POST: Met à jour les positions"""
+    if request.method == 'POST':
+        # Client envoie les positions mises à jour depuis localStorage
+        positions_data = request.get_json()
+        if positions_data:
+            coap_server.node_positions = positions_data
+            print(f"📍 Positions nodes mises à jour: {len(positions_data)} nodes")
+            return jsonify({'success': True, 'count': len(positions_data)})
+        return jsonify({'success': False, 'error': 'No data provided'}), 400
+    else:
+        # Retourner les positions actuelles
+        return jsonify(coap_server.node_positions)
+
+# ========== AUDIO LIBRARY API ROUTES ==========
+
+@app.route('/api/audio/catalog')
+def get_audio_catalog():
+    """Retourne le catalogue audio complet"""
+    try:
+        stats = audio_lib.get_statistics()
+        categories = audio_lib.get_all_categories()
+
+        return jsonify({
+            'success': True,
+            'statistics': stats,
+            'categories': {
+                name: {
+                    'description': data.get('description'),
+                    'count': data.get('count'),
+                    'messages': audio_lib.format_for_web(data.get('messages', []))
+                }
+                for name, data in categories.items()
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/audio/instant')
+def get_instant_messages():
+    """Retourne les 20 messages instantanés prioritaires pour le tertiaire"""
+    try:
+        instant = audio_lib.get_instant_messages(20)
+        formatted = audio_lib.format_for_web(instant)
+
+        return jsonify({
+            'success': True,
+            'count': len(formatted),
+            'messages': formatted
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/audio/category/<category>')
+def get_audio_category(category):
+    """Retourne tous les messages d'une catégorie"""
+    try:
+        cat_data = audio_lib.get_category(category)
+
+        if not cat_data:
+            return jsonify({
+                'success': False,
+                'error': f'Category not found: {category}'
+            }), 404
+
+        messages = audio_lib.format_for_web(cat_data.get('messages', []))
+
+        return jsonify({
+            'success': True,
+            'category': category,
+            'description': cat_data.get('description'),
+            'count': len(messages),
+            'messages': messages
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/audio/search')
+def search_audio():
+    """Recherche de messages audio par mots-clés"""
+    keywords = request.args.get('q', '')
+
+    if not keywords:
+        return jsonify({
+            'success': False,
+            'error': 'Missing search query parameter: q'
+        }), 400
+
+    try:
+        results = audio_lib.search(keywords)
+        formatted = audio_lib.format_for_web(results)
+
+        return jsonify({
+            'success': True,
+            'query': keywords,
+            'count': len(formatted),
+            'results': formatted
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/audio/play', methods=['POST'])
+def play_audio():
+    """
+    Envoie commande CoAP pour jouer un message audio sur un node
+
+    POST Body:
+    {
+        "node": "node1",           # Nom du node cible
+        "message_id": 5,           # ID du message (optionnel si path fourni)
+        "path": "alertes_pti/..."  # Chemin relatif (optionnel si message_id fourni)
+    }
+    """
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'success': False, 'error': 'Missing JSON body'}), 400
+
+    node_name = data.get('node')
+    message_id = data.get('message_id')
+    path = data.get('path')
+
+    if not node_name:
+        return jsonify({'success': False, 'error': 'Missing node parameter'}), 400
+
+    if not message_id and not path:
+        return jsonify({
+            'success': False,
+            'error': 'Must provide either message_id or path'
+        }), 400
+
+    # Récupérer l'adresse IPv6 du node
+    if node_name not in coap_server.registry.nodes:
+        return jsonify({
+            'success': False,
+            'error': f'Node not found: {node_name}'
+        }), 404
+
+    node_data = coap_server.registry.nodes[node_name]
+    if isinstance(node_data, dict):
+        node_ip = node_data.get('address')
+    else:
+        node_ip = node_data
+
+    if not node_ip:
+        return jsonify({
+            'success': False,
+            'error': f'Node address not found: {node_name}'
+        }), 404
+
+    try:
+        # Construire commande CoAP
+        if message_id:
+            coap_payload = f"play:{message_id}"
+            msg_info = audio_lib.get_message_by_id(message_id)
+            description = msg_info.get('description', '') if msg_info else ''
+        else:
+            # ESP32 adds /sdcard/ prefix automatically, send relative path only
+            # If path ends with '/', it's a folder - find first WAV file
+            if path.endswith('/'):
+                import os
+                folder_path = f"/Volumes/LUXWAVE/audiowav/{path}"
+                if os.path.exists(folder_path) and os.path.isdir(folder_path):
+                    wav_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.wav')]
+                    if wav_files:
+                        wav_files.sort()  # Sort alphabetically to get first track
+                        first_track = wav_files[0]
+                        coap_payload = f"play:path:{path}{first_track}"
+                        description = f"{path}{first_track}"
+                    else:
+                        return jsonify({
+                            'success': False,
+                            'error': f'No WAV files found in folder: {path}'
+                        }), 404
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Folder not found: {path}'
+                    }), 404
+            else:
+                coap_payload = f"play:path:{path}"
+                description = path
+
+        # Envoyer commande CoAP
+        success = coap_server.send_coap_post(node_ip, 'audio', coap_payload)
+
+        if success:
+            # Émettre événement WebSocket pour mise à jour UI
+            socketio.emit('audio_playback', {
+                'node': node_name,
+                'message_id': message_id,
+                'description': description,
+                'timestamp': datetime.now().isoformat()
+            })
+
+            return jsonify({
+                'success': True,
+                'node': node_name,
+                'message': description
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to send CoAP command'
+            }), 500
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/audio/stop', methods=['POST'])
+def stop_audio():
+    """Arrête la lecture audio sur un node"""
+    data = request.get_json()
+
+    node_name = data.get('node')
+    if not node_name:
+        return jsonify({'success': False, 'error': 'Missing node parameter'}), 400
+
+    if node_name not in coap_server.registry.nodes:
+        return jsonify({
+            'success': False,
+            'error': f'Node not found: {node_name}'
+        }), 404
+
+    node_data = coap_server.registry.nodes[node_name]
+    if isinstance(node_data, dict):
+        node_ip = node_data.get('address')
+    else:
+        node_ip = node_data
+
+    if not node_ip:
+        return jsonify({
+            'success': False,
+            'error': f'Node address not found: {node_name}'
+        }), 404
+
+    try:
+        success = coap_server.send_coap_post(node_ip, 'audio', 'stop')
+
+        return jsonify({
+            'success': success,
+            'node': node_name
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/audio/volume', methods=['POST'])
+def set_audio_volume():
+    """Règle le volume audio sur un node"""
+    data = request.get_json()
+
+    node_name = data.get('node')
+    volume = data.get('volume')  # 0-100
+
+    if not node_name or volume is None:
+        return jsonify({
+            'success': False,
+            'error': 'Missing node or volume parameter'
+        }), 400
+
+    if not (0 <= volume <= 100):
+        return jsonify({
+            'success': False,
+            'error': 'Volume must be between 0 and 100'
+        }), 400
+
+    if node_name not in coap_server.registry.nodes:
+        return jsonify({
+            'success': False,
+            'error': f'Node not found: {node_name}'
+        }), 404
+
+    node_data = coap_server.registry.nodes[node_name]
+    if isinstance(node_data, dict):
+        node_ip = node_data.get('address')
+    else:
+        node_ip = node_data
+
+    if not node_ip:
+        return jsonify({
+            'success': False,
+            'error': f'Node address not found: {node_name}'
+        }), 404
+
+    try:
+        success = coap_server.send_coap_post(node_ip, 'audio', f'volume:{volume}')
+
+        return jsonify({
+            'success': success,
+            'node': node_name,
+            'volume': volume
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@socketio.on('connect')
+def handle_connect():
+    print('Client connecté au WebSocket')
+    emit('connected', {'message': 'Connecté au serveur CoAP'})
+    
+    # Envoyer les données initiales des devices si disponibles
+    if coap_server and coap_server.thingsboard.connected:
+        for device_name, loc_info in coap_server.thingsboard.device_loc_code.items():
+            if loc_info.get('value'):
+                emit('loc_code_update', {
+                    'device': device_name,
+                    'loc_code': loc_info['value'],
+                    'timestamp': datetime.now().isoformat()
+                })
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client déconnecté du WebSocket')
+
+@socketio.on('request_devices')
+def handle_request_devices():
+    """Envoie la liste des devices sur demande"""
+    devices_data = []
+    
+    if coap_server and coap_server.thingsboard.connected:
+        for device_name, device_id in coap_server.thingsboard.device_cache.items():
+            loc_info = coap_server.thingsboard.device_loc_code.get(device_name, {})
+            devices_data.append({
+                'name': device_name,
+                'id': device_id,
+                'loc_code': loc_info.get('value'),
+                'timestamp': loc_info.get('timestamp')
+            })
+    
+    emit('devices_list', devices_data)
+
+def run_web_server():
+    """Lance le serveur web dans un thread séparé"""
+    print(f"🌐 Interface web disponible sur http://localhost:{WEB_PORT}")
+    print(f"   Backend: threading (async_mode='threading')")
+    socketio.run(app, host='0.0.0.0', port=WEB_PORT, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)
+
+def main():
+    """Fonction principale"""
+    global coap_server
+    
+    # Créer fichier exemple si nécessaire
+    if not Path(ADDRESSES_FILE).exists():
+        example_data = {
+            "nodes": {
+                "node_1": "fde7:cfa3:40ca:73b5:xxxx:xxxx:xxxx:xxx1",
+                "node_2": "fde7:cfa3:40ca:73b5:xxxx:xxxx:xxxx:xxx2"
+            }
+        }
+        with open(ADDRESSES_FILE, 'w') as f:
+            json.dump(example_data, f, indent=2)
+        print(f"📝 Fichier {ADDRESSES_FILE} créé avec des exemples")
+        print("⚠️  Remplacez les adresses par les vraies adresses IPv6 de vos nodes!")
+        print()
+    
+    # Créer le serveur CoAP
+    coap_server = CoAPServer()
+
+    # Lancer le serveur web dans un thread
+    web_thread = threading.Thread(target=run_web_server)
+    web_thread.daemon = True
+    web_thread.start()
+
+    # Lancer le scan initial de la topologie dans un thread
+    print("🗺️  Démarrage du scan initial de la topologie...")
+    topology_thread = threading.Thread(target=refresh_topology_background)
+    topology_thread.daemon = True
+    topology_thread.start()
+
+    # Lancer le serveur CoAP
+    coap_server.run()
+
+if __name__ == "__main__":
+    main()

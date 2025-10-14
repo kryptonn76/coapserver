@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenThread IoT Control Center</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-animation">
+                        <div class="logo-ring"></div>
+                        <div class="logo-core">IoT</div>
+                    </div>
+                    <h1>OpenThread Control Center</h1>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-card">
+                        <span class="stat-value" id="total-nodes">0</span>
+                        <span class="stat-label">Nodes</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="online-nodes">0</span>
+                        <span class="stat-label">En ligne</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="event-count">0</span>
+                        <span class="stat-label">Événements</span>
+                    </div>
+                    <div class="stat-card" id="demo-indicator">
+                        <span class="stat-value">⏸️</span>
+                        <span class="stat-label">Démo</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Contrôles globaux -->
+        <div class="global-controls">
+            <h2>Contrôles Globaux</h2>
+            <div class="control-grid">
+                <button class="btn btn-primary" onclick="sendCommand('announce', 'all', {flash: true})">
+                    📢 Annoncer Serveur
+                </button>
+                <button class="btn btn-success" onclick="sendCommand('led', 'all', {led: 'all', action: 'on'})">
+                    💡 Toutes LEDs ON
+                </button>
+                <button class="btn btn-danger" onclick="sendCommand('led', 'all', {led: 'all', action: 'off'})">
+                    🔌 Toutes LEDs OFF
+                </button>
+                <button class="btn btn-warning" onclick="toggleDemo()">
+                    🎭 Mode Démo
+                </button>
+                <button class="btn btn-info" onclick="startLightPath()">
+                    🌈 Chemin Lumineux
+                </button>
+                <button class="btn btn-purple" onclick="flashAll()">
+                    ⚡ Flash Synchronisé
+                </button>
+                <button class="btn btn-success" id="tracking-mode-btn" onclick="toggleTrackingMode()">
+                    🎯 Suivi de Position
+                </button>
+                <button class="btn btn-audio" onclick="window.location.href='/audio-control'" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    🔊 Contrôle Audio PTI
+                </button>
+            </div>
+            
+            <!-- Contrôles de clignotement -->
+            <div class="blink-controls">
+                <h3>Clignotement Global</h3>
+                <div class="blink-params">
+                    <select id="global-blink-led" class="form-control">
+                        <option value="red">LED Rouge</option>
+                        <option value="light">LED Externe</option>
+                        <option value="all">Toutes</option>
+                    </select>
+                    <input type="number" id="global-blink-period" class="form-control" placeholder="Période (ms)" value="1000" min="100" max="10000">
+                    <input type="number" id="global-blink-duty" class="form-control" placeholder="Duty (%)" value="50" min="1" max="99">
+                    <button class="btn btn-primary" onclick="startGlobalBlink()">Démarrer</button>
+                    <button class="btn btn-danger" onclick="stopGlobalBlink()">Arrêter</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grille des nodes -->
+        <div class="nodes-section">
+            <div class="nodes-header">
+                <h2>Nodes OpenThread</h2>
+                <div class="sort-controls">
+                    <label for="sort-select">Trier par:</label>
+                    <select id="sort-select" class="form-control" onchange="sortNodes(this.value)">
+                        <option value="status">État (connectés d'abord)</option>
+                        <option value="ordre">Ordre de node</option>
+                        <option value="name">Nom alphabétique</option>
+                        <option value="battery">Niveau batterie</option>
+                    </select>
+                </div>
+            </div>
+            <div class="nodes-grid" id="nodes-grid">
+                <!-- Les cartes de nodes seront générées dynamiquement -->
+            </div>
+        </div>
+
+        <!-- Section événements -->
+        <div class="events-section">
+            <h2>Événements Temps Réel</h2>
+            <div class="events-container" id="events-container">
+                <div class="events-list" id="events-list">
+                    <!-- Les événements seront ajoutés dynamiquement -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal pour les graphiques de batterie -->
+        <div id="battery-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeBatteryModal()">&times;</span>
+                <h3 id="modal-node-name">Historique Batterie</h3>
+                <canvas id="battery-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template pour les cartes de nodes -->
+    <template id="node-card-template">
+        <div class="node-card" data-node-name="">
+            <div class="node-header">
+                <div class="node-status">
+                    <span class="status-indicator offline"></span>
+                    <h3 class="node-name"></h3>
+                </div>
+                <div class="node-order"></div>
+            </div>
+            
+            <div class="node-body">
+                <!-- Batterie -->
+                <div class="battery-section">
+                    <div class="battery-header">
+                        <span class="battery-icon">🔋</span>
+                        <span class="battery-text">--</span>
+                    </div>
+                    <div class="battery-bar">
+                        <div class="battery-fill"></div>
+                    </div>
+                    <button class="btn-small" onclick="showBatteryHistory(this)">📊</button>
+                </div>
+                
+                <!-- LEDs -->
+                <div class="led-controls">
+                    <div class="led-group">
+                        <div class="led led-red" data-led="red"></div>
+                        <button class="btn-led" onclick="toggleLED(this, 'red')">Rouge</button>
+                    </div>
+                    <div class="led-group">
+                        <div class="led led-light" data-led="light"></div>
+                        <button class="btn-led" onclick="toggleLED(this, 'light')">Externe</button>
+                    </div>
+                </div>
+                
+                <!-- Clignotement -->
+                <div class="blink-section">
+                    <select class="blink-led-select">
+                        <option value="red">Rouge</option>
+                        <option value="light">Externe</option>
+                    </select>
+                    <input type="number" class="blink-period" placeholder="ms" value="1000" min="100" max="10000">
+                    <input type="number" class="blink-duty" placeholder="%" value="50" min="1" max="99">
+                    <button class="btn-small btn-blink" onclick="toggleBlink(this)">💫</button>
+                </div>
+                
+                <!-- Dernière activité -->
+                <div class="last-activity">
+                    <span class="activity-label">Dernière activité:</span>
+                    <span class="activity-time">--</span>
+                </div>
+                
+                <!-- IPv6 Address -->
+                <div class="node-address" title="Adresse IPv6"></div>
+            </div>
+        </div>
+    </template>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
