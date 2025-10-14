@@ -321,16 +321,12 @@ function createMessageCard(msg, isInstant = false) {
     const card = template.content.cloneNode(true).querySelector('.message-card');
 
     card.dataset.id = msg.id;
-    card.dataset.path = msg.path_full;
 
     if (isInstant) {
         card.classList.add('instant-card');
     }
 
-    card.querySelector('.message-id').textContent = `#${msg.id}`;
-    card.querySelector('.message-category').textContent = msg.category;
     card.querySelector('.message-description').textContent = msg.description;
-    card.querySelector('.message-path').textContent = msg.filename;
 
     return card;
 }
@@ -359,8 +355,7 @@ function createCategorySection(categoryKey, categoryData, metadata) {
 /**
  * Play a message on the selected node
  */
-async function playMessage(button) {
-    const card = button.closest('.message-card');
+async function playMessage(card) {
     const messageId = parseInt(card.dataset.id);
 
     if (!currentNode) {
@@ -369,8 +364,9 @@ async function playMessage(button) {
     }
 
     try {
-        button.disabled = true;
-        button.textContent = '⏳ Envoi...';
+        // Visual feedback
+        card.style.opacity = '0.6';
+        card.style.transform = 'scale(0.98)';
 
         const response = await fetch('/api/audio/play', {
             method: 'POST',
@@ -387,11 +383,14 @@ async function playMessage(button) {
 
         if (data.success) {
             updateStatus(`▶️ Lecture sur ${currentNode}: ${data.message}`);
-            button.textContent = '✓ Envoyé';
+
+            // Success feedback
+            card.style.backgroundColor = '#d4edda';
             setTimeout(() => {
-                button.textContent = '▶️ Jouer';
-                button.disabled = false;
-            }, 2000);
+                card.style.opacity = '1';
+                card.style.transform = 'scale(1)';
+                card.style.backgroundColor = '';
+            }, 1000);
         } else {
             throw new Error(data.error);
         }
@@ -399,8 +398,14 @@ async function playMessage(button) {
     } catch (error) {
         console.error('Failed to play message:', error);
         showError(`Erreur: ${error.message}`);
-        button.textContent = '▶️ Jouer';
-        button.disabled = false;
+
+        // Error feedback
+        card.style.backgroundColor = '#f8d7da';
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'scale(1)';
+            card.style.backgroundColor = '';
+        }, 1000);
     }
 }
 

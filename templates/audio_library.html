@@ -87,16 +87,8 @@
 
     <!-- Template for message card -->
     <template id="message-card-template">
-        <div class="message-card" data-id="">
-            <div class="message-header">
-                <span class="message-id">#</span>
-                <span class="message-category"></span>
-            </div>
+        <div class="message-card" data-id="" onclick="playMessage(this)">
             <div class="message-description"></div>
-            <div class="message-actions">
-                <button class="btn-play" onclick="playMessage(this)">▶️ Jouer</button>
-                <span class="message-path"></span>
-            </div>
         </div>
     </template>
 
