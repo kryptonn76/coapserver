@@ -50,6 +50,11 @@ from lib.ot_network_mapper import OpenThreadScanner
 # Import audio library
 from lib.audio_library import audio_lib
 
+# Import Border Router Management
+from lib.border_router_manager import BorderRouterManager
+from lib.br_auth import verify_br_token, get_br_config, get_br_nodes
+import uuid
+
 # Charger les variables d'environnement
 load_dotenv()
 
@@ -57,6 +62,11 @@ load_dotenv()
 COAP_PORT = 5683
 ADDRESSES_FILE = "config/adresses.json"
 WEB_PORT = 5001
+
+# Border Router WebSocket Configuration
+USE_WEBSOCKET_BR = os.getenv('USE_WEBSOCKET_BR', 'false').lower() == 'true'
+BR_AUTH_ENABLED = os.getenv('BR_AUTH_ENABLED', 'true').lower() == 'true'
+BR_HEARTBEAT_TIMEOUT = int(os.getenv('BR_HEARTBEAT_TIMEOUT', '30'))
 
 # Flask app
 app = Flask(__name__)
@@ -2023,6 +2033,9 @@ network_scanner = None
 network_topology_data = None
 topology_lock = threading.Lock()
 
+# Border Router Manager (instance globale)
+border_router_manager = BorderRouterManager(heartbeat_timeout=BR_HEARTBEAT_TIMEOUT)
+
 # Fonction pour rafraîchir la topologie en arrière-plan
 def refresh_topology_background():
     """Rafraîchit la topologie du réseau en arrière-plan"""
@@ -2822,6 +2835,217 @@ def handle_request_devices():
             })
     
     emit('devices_list', devices_data)
+
+
+# ============================================================================
+# WebSocket Namespace pour Border Routers (/ws/br)
+# ============================================================================
+
+@socketio.on('connect', namespace='/ws/br')
+def handle_br_connect():
+    """
+    Gère la connexion d'un Border Router via WebSocket
+    Query params attendus: br_id, auth_token, network_prefix
+    """
+    br_id = request.args.get('br_id')
+    auth_token = request.args.get('auth_token')
+    network_prefix = request.args.get('network_prefix', '')
+
+    if not br_id or not auth_token:
+        logger.error("❌ Connexion BR refusée: br_id ou auth_token manquant")
+        return False
+
+    # Vérifier l'authentification
+    if BR_AUTH_ENABLED and not verify_br_token(br_id, auth_token):
+        logger.error(f"❌ Connexion BR refusée: authentification échouée pour {br_id}")
+        return False
+
+    # Récupérer la config du BR (nodes associés)
+    br_config = get_br_config(br_id)
+    nodes = br_config.get('nodes', []) if br_config else []
+
+    # Enregistrer le BR dans le manager
+    success = border_router_manager.register_br(
+        br_id=br_id,
+        sid=request.sid,
+        network_prefix=network_prefix,
+        nodes=nodes
+    )
+
+    if success:
+        # Joindre la room spécifique au BR
+        from flask_socketio import join_room
+        join_room(f'br_{br_id}')
+
+        # Envoyer confirmation
+        emit('connected', {
+            'status': 'ok',
+            'br_id': br_id,
+            'server_time': time.time(),
+            'use_websocket_mode': USE_WEBSOCKET_BR
+        })
+
+        logger.info(f"✅ Border Router {br_id} connecté via WebSocket (sid: {request.sid})")
+        return True
+    else:
+        logger.error(f"❌ Échec enregistrement BR {br_id}")
+        return False
+
+
+@socketio.on('disconnect', namespace='/ws/br')
+def handle_br_disconnect():
+    """Gère la déconnexion d'un Border Router"""
+    br_id = border_router_manager.sid_to_br.get(request.sid)
+
+    if br_id:
+        border_router_manager.unregister_br(br_id)
+        logger.warning(f"⚠️ Border Router {br_id} déconnecté (WebSocket)")
+
+
+@socketio.on('heartbeat', namespace='/ws/br')
+def handle_br_heartbeat(data):
+    """
+    Gère le heartbeat d'un Border Router
+    Data: {br_id, timestamp, nodes_count, status}
+    """
+    br_id = data.get('br_id')
+    nodes_count = data.get('nodes_count', 0)
+
+    if not br_id:
+        return
+
+    # Mettre à jour le heartbeat
+    border_router_manager.update_heartbeat(br_id, nodes_count)
+
+    # Répondre avec ACK
+    emit('heartbeat_ack', {
+        'timestamp': time.time(),
+        'server_status': 'ok'
+    })
+
+
+@socketio.on('node_event', namespace='/ws/br')
+def handle_node_event(data):
+    """
+    Gère les événements des nodes ESP32 (via BR proxy)
+    Data: {type, br_id, node, event_type, payload, timestamp}
+    """
+    try:
+        br_id = data.get('br_id')
+        node_name = data.get('node')
+        event_type = data.get('event_type')  # 'button', 'battery', 'ble-beacon'
+        payload = data.get('payload', {})
+
+        if not br_id or not node_name or not event_type:
+            logger.error("Événement node invalide: champs manquants")
+            return
+
+        # Incrémenter le compteur d'événements
+        border_router_manager.increment_event_counter(br_id)
+
+        # Router vers les handlers appropriés
+        if event_type == 'button' and coap_server:
+            # Adapter le format pour l'handler existant
+            coap_server.handle_button_event_from_br({
+                'node': node_name,
+                'br_id': br_id,
+                'payload': payload
+            })
+
+        elif event_type == 'battery' and coap_server:
+            coap_server.handle_battery_event_from_br({
+                'node': node_name,
+                'br_id': br_id,
+                'voltage': payload.get('voltage'),
+                'percentage': payload.get('percentage')
+            })
+
+        elif event_type == 'ble-beacon' and coap_server:
+            coap_server.handle_ble_event_from_br({
+                'node': node_name,
+                'br_id': br_id,
+                'ble_addr': payload.get('ble_addr'),
+                'rssi': payload.get('rssi'),
+                'code': payload.get('code')
+            })
+
+        # Émettre l'événement aux clients web
+        socketio.emit('node_event', {
+            'node': node_name,
+            'br_id': br_id,
+            'event_type': event_type,
+            'payload': payload,
+            'timestamp': time.time()
+        }, namespace='/')
+
+    except Exception as e:
+        logger.error(f"Erreur traitement événement node: {e}")
+
+
+@socketio.on('command_response', namespace='/ws/br')
+def handle_command_response(data):
+    """
+    Gère la réponse à une commande envoyée à un node
+    Data: {br_id, request_id, node, status, result, error}
+    """
+    try:
+        br_id = data.get('br_id')
+        request_id = data.get('request_id')
+        node_name = data.get('node')
+        status = data.get('status')  # 'success' ou 'error'
+        result = data.get('result', {})
+        error = data.get('error')
+
+        if not request_id:
+            return
+
+        # Notifier les clients web
+        socketio.emit('command_completed', {
+            'request_id': request_id,
+            'node': node_name,
+            'br_id': br_id,
+            'status': status,
+            'result': result,
+            'error': error,
+            'timestamp': time.time()
+        }, namespace='/')
+
+        logger.info(f"📨 Réponse commande {request_id}: {status} (node: {node_name}, BR: {br_id})")
+
+    except Exception as e:
+        logger.error(f"Erreur traitement réponse commande: {e}")
+
+
+@socketio.on('topology_update', namespace='/ws/br')
+def handle_topology_update(data):
+    """
+    Gère la mise à jour de topologie envoyée par un BR
+    Data: {br_id, nodes: [{name, rloc16, role, ...}]}
+    """
+    try:
+        br_id = data.get('br_id')
+        nodes = data.get('nodes', [])
+
+        if not br_id:
+            return
+
+        # Extraire les noms des nodes
+        node_names = [n.get('name') for n in nodes if n.get('name')]
+
+        # Mettre à jour la liste des nodes du BR
+        border_router_manager.update_nodes_list(br_id, node_names)
+
+        logger.info(f"🗺️ Topologie mise à jour pour BR {br_id}: {len(node_names)} nodes")
+
+        # Notifier les clients web
+        socketio.emit('topology_update', {
+            'br_id': br_id,
+            'nodes_count': len(node_names)
+        }, namespace='/')
+
+    except Exception as e:
+        logger.error(f"Erreur mise à jour topologie: {e}")
+
 
 def run_web_server():
     """Lance le serveur web dans un thread séparé"""
