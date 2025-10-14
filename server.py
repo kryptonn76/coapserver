@@ -747,32 +747,198 @@ class CoAPServer:
         try:
             # Créer un nouveau socket pour l'envoi
             sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-            
+
             # Header CoAP POST
             message_id = int(time.time()) % 0xFFFF
             header = struct.pack('!BBH',
                                 0x50,  # Ver=1, Type=NON, TKL=0
                                 0x02,  # Code=POST (0.02)
                                 message_id)
-            
+
             # Option Uri-Path
             uri_bytes = uri_path.encode('utf-8')
             option_header = bytes([0xB0 + len(uri_bytes)])  # Delta=11
-            
+
             # Construire le paquet
             packet = header + option_header + uri_bytes + b'\xff' + payload.encode('utf-8')
-            
+
             # Envoyer
             sock.sendto(packet, (address, COAP_PORT))
             print(f"✅ Envoyé '{payload}' à {address}/{uri_path}")
-            
+
             sock.close()
             return True
-            
+
         except Exception as e:
             print(f"❌ Erreur envoi CoAP: {e}")
             return False
-    
+
+    def send_command_via_br(self, node_name, command_type, payload=None):
+        """
+        Envoie une commande à un node via le Border Router en mode WebSocket
+
+        Args:
+            node_name: Nom du node cible (ex: "n01")
+            command_type: Type de commande (audio_play, audio_stop, audio_volume, led_control, led_blink)
+            payload: Payload de la commande (dict)
+
+        Returns:
+            tuple: (success: bool, request_id: str ou None, error: str ou None)
+        """
+        # Trouver le BR qui gère ce node
+        br_id = border_router_manager.get_br_for_node(node_name)
+        if not br_id:
+            error_msg = f"Aucun Border Router online ne gère le node {node_name}"
+            logger.warning(error_msg)
+            return False, None, error_msg
+
+        # Générer un request_id unique
+        request_id = str(uuid.uuid4())
+
+        # Construire le message de commande selon le protocole
+        command_data = {
+            'type': command_type,
+            'target_node': node_name,
+            'request_id': request_id,
+            'payload': payload or {}
+        }
+
+        # Envoyer via WebSocket au BR
+        try:
+            socketio.emit('command', command_data, room=f'br_{br_id}', namespace='/ws/br')
+            logger.info(f"📤 Commande {command_type} envoyée au BR {br_id} pour node {node_name} (request_id: {request_id})")
+
+            # Incrémenter le compteur de commandes
+            border_router_manager.increment_command_counter(br_id)
+
+            return True, request_id, None
+
+        except Exception as e:
+            error_msg = f"Erreur envoi commande via BR: {e}"
+            logger.error(error_msg)
+            return False, None, error_msg
+
+    def handle_button_event_from_br(self, data):
+        """
+        Traite un événement bouton reçu depuis un Border Router
+
+        Args:
+            data: Données de l'événement (contient br_id, node, payload, timestamp)
+        """
+        br_id = data.get('br_id')
+        node_name = data.get('node')
+        payload = data.get('payload', {})
+
+        logger.info(f"🔘 Événement bouton depuis BR {br_id}, node {node_name}: {payload}")
+
+        # Extraire les informations du payload
+        state = payload.get('state', 'pressed')
+        duration_ms = payload.get('duration_ms', 0)
+
+        # Créer l'événement pour le web
+        event_data = {
+            'node': node_name,
+            'br_id': br_id,
+            'timestamp': datetime.now().isoformat(),
+            'type': 'button',
+            'state': state,
+            'duration_ms': duration_ms
+        }
+
+        # Détecter si c'est un long press (> 2 secondes)
+        if duration_ms > 2000:
+            logger.info(f"🔘🔘 BOUTON LONG PRESS détecté (node {node_name}, {duration_ms}ms)")
+            event_data['action'] = 'longpress'
+
+            # TODO: Implémenter la logique de toggle global des LEDs via WebSocket
+            # Pour l'instant on émet juste l'événement
+
+        # Émettre l'événement WebSocket
+        socketio.emit('button_event', event_data)
+        self.button_events.append(event_data)
+
+        # Incrémenter le compteur d'événements du BR
+        border_router_manager.increment_event_counter(br_id)
+
+    def handle_battery_event_from_br(self, data):
+        """
+        Traite un événement batterie reçu depuis un Border Router
+
+        Args:
+            data: Données de l'événement (contient br_id, node, payload, timestamp)
+        """
+        br_id = data.get('br_id')
+        node_name = data.get('node')
+        payload = data.get('payload', {})
+
+        voltage = payload.get('voltage', 0)
+        percentage = payload.get('percentage', 0)
+
+        logger.info(f"🔋 Batterie depuis BR {br_id}, node {node_name}: {voltage}V ({percentage}%)")
+
+        # Stocker l'état batterie
+        self.battery_status[node_name] = {
+            'voltage': voltage,
+            'percentage': percentage,
+            'timestamp': datetime.now().isoformat(),
+            'br_id': br_id
+        }
+
+        # Émettre via WebSocket
+        socketio.emit('battery_update', {
+            'node': node_name,
+            'voltage': voltage,
+            'percentage': percentage,
+            'timestamp': datetime.now().isoformat()
+        })
+
+        # Incrémenter le compteur d'événements du BR
+        border_router_manager.increment_event_counter(br_id)
+
+    def handle_ble_event_from_br(self, data):
+        """
+        Traite un événement BLE beacon reçu depuis un Border Router
+
+        Args:
+            data: Données de l'événement (contient br_id, node, payload, timestamp)
+        """
+        br_id = data.get('br_id')
+        node_name = data.get('node')
+        payload = data.get('payload', {})
+
+        ble_addr = payload.get('ble_addr', '')
+        rssi = payload.get('rssi', 0)
+        code = payload.get('code', '')
+
+        logger.info(f"📡 BLE beacon depuis BR {br_id}, node {node_name}: {ble_addr} (RSSI: {rssi}, code: {code})")
+
+        # Stocker la détection
+        detection_data = {
+            'node': node_name,
+            'br_id': br_id,
+            'ble_addr': ble_addr,
+            'rssi': rssi,
+            'code': code,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        # Ajouter à l'historique
+        self.ble_history.append(detection_data)
+
+        # Limiter l'historique à 1000 entrées
+        if len(self.ble_history) > 1000:
+            self.ble_history.pop(0)
+
+        # Mettre à jour le cache de détection
+        if code:
+            self.ble_detections[code] = detection_data
+
+        # Émettre via WebSocket
+        socketio.emit('ble_beacon', detection_data)
+
+        # Incrémenter le compteur d'événements du BR
+        border_router_manager.increment_event_counter(br_id)
+
     def handle_button_event(self, source_addr, payload, flash_duration=2, demo_mode=False):
         """Traite un événement bouton"""
         node_name = self.registry.get_node_by_address(source_addr)
@@ -2167,6 +2333,41 @@ def refresh_topology():
     thread.start()
     return jsonify({'status': 'started'})
 
+@app.route('/api/br/status')
+def get_br_status():
+    """
+    Retourne le statut de tous les Border Routers connectés
+
+    Returns:
+        JSON avec les statistiques et le statut de chaque BR
+    """
+    if not USE_WEBSOCKET_BR:
+        return jsonify({
+            'websocket_mode': False,
+            'message': 'Border Router WebSocket mode is disabled'
+        })
+
+    try:
+        # Récupérer les statistiques globales
+        statistics = border_router_manager.get_statistics()
+
+        # Récupérer le statut de tous les BRs
+        border_routers = border_router_manager.get_all_brs_status()
+
+        return jsonify({
+            'websocket_mode': True,
+            'statistics': statistics,
+            'border_routers': border_routers,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Erreur récupération statut BR: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/nodes')
 def get_nodes():
     """Retourne la liste des nodes avec leurs états"""
@@ -2688,28 +2889,46 @@ def play_audio():
                 coap_payload = f"play:path:{path}"
                 description = path
 
-        # Envoyer commande CoAP
-        success = coap_server.send_coap_post(node_ip, 'audio', coap_payload)
+        # Envoyer commande via WebSocket ou CoAP selon la configuration
+        if USE_WEBSOCKET_BR:
+            # Mode WebSocket : envoyer via Border Router
+            success, request_id, error = coap_server.send_command_via_br(
+                node_name,
+                'audio_play',
+                {'message_id': message_id} if message_id else {'path': path}
+            )
 
-        if success:
-            # Émettre événement WebSocket pour mise à jour UI
-            socketio.emit('audio_playback', {
-                'node': node_name,
-                'message_id': message_id,
-                'description': description,
-                'timestamp': datetime.now().isoformat()
-            })
-
-            return jsonify({
-                'success': True,
-                'node': node_name,
-                'message': description
-            })
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'error': error or 'Failed to send command via Border Router'
+                }), 500
         else:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to send CoAP command'
-            }), 500
+            # Mode direct CoAP
+            success = coap_server.send_coap_post(node_ip, 'audio', coap_payload)
+            request_id = None
+
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to send CoAP command'
+                }), 500
+
+        # Émettre événement WebSocket pour mise à jour UI
+        socketio.emit('audio_playback', {
+            'node': node_name,
+            'message_id': message_id,
+            'description': description,
+            'timestamp': datetime.now().isoformat(),
+            'request_id': request_id
+        })
+
+        return jsonify({
+            'success': True,
+            'node': node_name,
+            'message': description,
+            'request_id': request_id
+        })
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -2742,11 +2961,35 @@ def stop_audio():
         }), 404
 
     try:
-        success = coap_server.send_coap_post(node_ip, 'audio', 'stop')
+        # Envoyer commande via WebSocket ou CoAP selon la configuration
+        if USE_WEBSOCKET_BR:
+            # Mode WebSocket : envoyer via Border Router
+            success, request_id, error = coap_server.send_command_via_br(
+                node_name,
+                'audio_stop',
+                {}
+            )
+
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'error': error or 'Failed to send command via Border Router'
+                }), 500
+        else:
+            # Mode direct CoAP
+            success = coap_server.send_coap_post(node_ip, 'audio', 'stop')
+            request_id = None
+
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to send CoAP command'
+                }), 500
 
         return jsonify({
-            'success': success,
-            'node': node_name
+            'success': True,
+            'node': node_name,
+            'request_id': request_id
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -2790,12 +3033,36 @@ def set_audio_volume():
         }), 404
 
     try:
-        success = coap_server.send_coap_post(node_ip, 'audio', f'volume:{volume}')
+        # Envoyer commande via WebSocket ou CoAP selon la configuration
+        if USE_WEBSOCKET_BR:
+            # Mode WebSocket : envoyer via Border Router
+            success, request_id, error = coap_server.send_command_via_br(
+                node_name,
+                'audio_volume',
+                {'volume': volume}
+            )
+
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'error': error or 'Failed to send command via Border Router'
+                }), 500
+        else:
+            # Mode direct CoAP
+            success = coap_server.send_coap_post(node_ip, 'audio', f'volume:{volume}')
+            request_id = None
+
+            if not success:
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to send CoAP command'
+                }), 500
 
         return jsonify({
-            'success': success,
+            'success': True,
             'node': node_name,
-            'volume': volume
+            'volume': volume,
+            'request_id': request_id
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
