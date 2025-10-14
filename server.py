@@ -2036,7 +2036,7 @@ def refresh_topology_background():
         # Charger les noms depuis adresses.json
         address_names = {}
         try:
-            with open('adresses.json', 'r') as f:
+            with open(ADDRESSES_FILE, 'r') as f:
                 data = json.load(f)
                 nodes = data.get('nodes', {})
                 for node_name, node_data in nodes.items():

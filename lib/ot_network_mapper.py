@@ -11,7 +11,7 @@ import json
 import time
 from datetime import datetime
 from typing import List, Set
-from network_topology import NetworkTopology
+from .network_topology import NetworkTopology
 
 # Configuration
 COAP_PORT = 5683
@@ -294,7 +294,7 @@ async def main():
     known_addresses = []
     address_names = {}  # Mapping IPv6 -> nom du nœud
     try:
-        with open('adresses.json', 'r') as f:
+        with open('config/adresses.json', 'r') as f:
             data = json.load(f)
             nodes = data.get('nodes', {})
             for node_name, node_data in nodes.items():

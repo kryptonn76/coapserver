@@ -10,7 +10,7 @@ python-dotenv==1.0.0
 requests==2.31.0
 
 # ThingsBoard (optional - for telemetry integration)
-tb-rest-client==1.9.6
+tb-rest-client==4.1.0
 
 # WebSocket support
 python-socketio==5.10.0
