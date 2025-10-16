@@ -31,7 +31,7 @@ class BorderRouterManager:
         self.border_routers: Dict[str, Dict] = {}  # {br_id: {info}}
         self.sid_to_br: Dict[str, str] = {}        # {socket_id: br_id}
         self.node_to_br: Dict[str, str] = {}       # {node_name: br_id}
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()  # RLock = Reentrant Lock (évite deadlock)
         self.heartbeat_timeout = heartbeat_timeout
 
         # Démarrer le thread de monitoring
