@@ -15,5 +15,8 @@ tb-rest-client==4.1.0
 # WebSocket support
 python-socketio==5.10.0
 
+# Native WebSocket for Border Router
+flask-sock==0.7.0
+
 # Async support
 asyncio-mqtt==0.16.1
