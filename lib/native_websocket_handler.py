@@ -442,17 +442,12 @@ class NativeWebSocketHandler:
             message: JSON message string
             ws: WebSocket connection object
         """
-        # 📥 LOG: Trame RAW reçue du BR
-        logger.error(f"📥 PYTHON←BR: Received WebSocket message from BR {br_id}:")
-        logger.error(f"   RAW JSON ({len(message)} bytes): {message}")
-
         try:
             # Parse JSON
             data = json.loads(message)
             msg_type = data.get('type')
 
-            logger.error(f"   ✅ JSON parsed successfully")
-            logger.error(f"   Message type: {msg_type}")
+            logger.debug(f"📥 BR {br_id}: {msg_type} ({len(message)} bytes)")
 
             if not msg_type:
                 logger.error(f"❌ Message from BR {br_id} missing 'type' field")
@@ -499,21 +494,6 @@ class NativeWebSocketHandler:
             ws: WebSocket connection
         """
         nodes_count = data.get('nodes_count', 0)
-        timestamp = data.get('timestamp', 0)
-        status = data.get('status', 'unknown')
-
-        # 🔍 Log detailed heartbeat info
-        logger.info(f"💓 HEARTBEAT from BR {br_id}:")
-        logger.info(f"   📊 Nodes count: {nodes_count}")
-        logger.info(f"   ⏱️  Timestamp: {timestamp}s")
-        logger.info(f"   ✅ Status: {status}")
-
-        # Get current mapping for this BR
-        br_nodes = [ipv6 for ipv6, mapping in self.ipv6_mapping.items() if mapping['br_id'] == br_id]
-        logger.info(f"   🗺️  Known nodes in mapping: {len(br_nodes)}")
-        for ipv6 in br_nodes:
-            mapping = self.ipv6_mapping[ipv6]
-            logger.info(f"      - {mapping['node_name']} @ {ipv6}")
 
         # Update heartbeat in manager
         self.border_router_manager.update_heartbeat(br_id, nodes_count)
@@ -525,6 +505,8 @@ class NativeWebSocketHandler:
             'server_status': 'ok'
         })
         ws.send(ack_msg)
+
+        logger.debug(f"💓 BR {br_id}: {nodes_count} nodes")
 
     def handle_node_event_with_ipv6(self, br_id: str, data: dict):
         """
@@ -808,24 +790,17 @@ class NativeWebSocketHandler:
         network_info = data.get('network_info', {})
         error = data.get('error')
 
-        logger.info(f"📊 SCAN RESULT from BR {br_id}:")
-        logger.info(f"   Node: {node_name} ({target_ipv6})")
-        logger.info(f"   Request ID: {request_id}")
-        logger.info(f"   Success: {success}")
-
         if not success:
-            logger.error(f"   ❌ Scan failed: {error}")
+            logger.warning(f"❌ Scan {node_name}: {error}")
             return
 
-        # Log network info
-        logger.info(f"   Network Info:")
-        logger.info(f"      RLOC16: {network_info.get('rloc16')}")
-        logger.info(f"      Role: {network_info.get('role')}")
-        logger.info(f"      Parent: {network_info.get('parent')}")
-        logger.info(f"      Neighbors: {len(network_info.get('neighbors', []))}")
+        # Log success concisely
+        role = network_info.get('role', 'unknown')
+        rloc = network_info.get('rloc16', '?')
+        neighbors = len(network_info.get('neighbors', []))
+        logger.info(f"✅ Scan {node_name}: {role} ({rloc}) - {neighbors} neighbors")
 
-        # TODO: Aggregate results and build topology
-        # For now, just emit to web clients
+        # Emit to web clients
         if _socketio:
             _socketio.emit('scan_node_result', {
                 'br_id': br_id,
@@ -836,8 +811,6 @@ class NativeWebSocketHandler:
                 'network_info': network_info,
                 'timestamp': time.time()
             }, namespace='/')
-
-        logger.info(f"✅ Scan result processed for {node_name}")
 
     def send_command(self, br_id: str, command_data: dict) -> bool:
         """

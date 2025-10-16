@@ -743,15 +743,25 @@
 
         // Mettre à jour le graphe
         function updateGraph(data) {
-            // IMPORTANT: Sauvegarder les badges ET les BRs avant de tout effacer
+            // IMPORTANT: Sauvegarder les badges, BRs, nodes ET edges existants avant de tout effacer
             const existingBadges = [];
             const existingBRs = [];
+            const existingThreadNodes = [];
             nodes.forEach(node => {
                 if (node.id.startsWith('badge_')) {
                     existingBadges.push(node);
                 } else if (node.id.startsWith('br_')) {
                     existingBRs.push(node);
+                } else {
+                    // Sauvegarder les nodes Thread (scannés)
+                    existingThreadNodes.push(node);
                 }
+            });
+
+            // Sauvegarder TOUS les edges
+            const existingEdges = [];
+            edges.forEach(edge => {
+                existingEdges.push(edge);
             });
 
             nodes.clear();
@@ -887,7 +897,7 @@
                 }
             });
 
-            // IMPORTANT: Restaurer les badges ET les BRs après avoir reconstruit la topologie
+            // IMPORTANT: Restaurer les badges, BRs ET nodes Thread après avoir reconstruit la topologie
             if (existingBadges.length > 0) {
                 console.log(`🔄 Restauration de ${existingBadges.length} badges après refresh topologie`);
                 existingBadges.forEach(badge => {
@@ -900,6 +910,41 @@
                 existingBRs.forEach(br => {
                     nodes.add(br);
                 });
+            }
+
+            // Restaurer les nodes Thread scannés qui ne sont PAS dans la nouvelle topologie
+            const restoredNodeIds = new Set();
+            if (existingThreadNodes.length > 0) {
+                const newNodeIds = new Set(nodeData.map(n => n.rloc16));
+                const nodesToRestore = existingThreadNodes.filter(node => !newNodeIds.has(node.id));
+                if (nodesToRestore.length > 0) {
+                    console.log(`🔄 Restauration de ${nodesToRestore.length} nodes Thread scannés`);
+                    nodesToRestore.forEach(node => {
+                        nodes.add(node);
+                        restoredNodeIds.add(node.id);
+                    });
+                }
+            }
+
+            // Restaurer les edges qui connectent les nodes préservés (scannés ou badges/BRs)
+            if (existingEdges.length > 0) {
+                const allCurrentNodeIds = new Set();
+                nodes.forEach(node => allCurrentNodeIds.add(node.id));
+
+                const edgesToRestore = existingEdges.filter(edge => {
+                    // Restaurer edge si les deux extrémités existent encore
+                    return allCurrentNodeIds.has(edge.from) && allCurrentNodeIds.has(edge.to);
+                });
+
+                if (edgesToRestore.length > 0) {
+                    console.log(`🔄 Restauration de ${edgesToRestore.length} edges`);
+                    edgesToRestore.forEach(edge => {
+                        // Éviter les doublons
+                        if (!edges.get(edge.id)) {
+                            edges.add(edge);
+                        }
+                    });
+                }
             }
         }
 
