@@ -11,15 +11,17 @@ Flask-SocketIO which wraps messages in Socket.IO protocol.
 import json
 import time
 import logging
+import queue
+import threading
 from typing import Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
 logger = logging.getLogger(__name__)
 
 # Références injectées par server.py (évite l'import circulaire)
-_app = _socketio = _coap = _border_router_manager = None
+_app = _socketio = _coap = _border_router_manager = _topology_refresh_callback = None
 
-def init(app, socketio, coap_server, border_router_manager):
+def init(app, socketio, coap_server, border_router_manager, topology_refresh_callback=None):
     """
     Initialize handler with references from main server
 
@@ -31,11 +33,14 @@ def init(app, socketio, coap_server, border_router_manager):
         socketio: Flask-SocketIO instance (THE REAL ONE from __main__)
         coap_server: CoAPServer instance
         border_router_manager: BorderRouterManager instance
+        topology_refresh_callback: Callback to trigger CoAP topology scan (optional)
     """
-    global _app, _socketio, _coap, _border_router_manager
+    global _app, _socketio, _coap, _border_router_manager, _topology_refresh_callback
     _app, _socketio, _coap, _border_router_manager = app, socketio, coap_server, border_router_manager
+    _topology_refresh_callback = topology_refresh_callback
     print(f"✅ native_websocket_handler.init() called")
     print(f"   socketio id: {id(_socketio)}")
+    print(f"   topology_refresh_callback: {'SET' if _topology_refresh_callback else 'NOT SET'}")
     print(f"   module: {__name__}")
 
 
@@ -59,8 +64,10 @@ class NativeWebSocketHandler:
         self.border_router_manager = border_router_manager
         self.br_auth_enabled = br_auth_enabled
         self.active_connections: Dict[str, any] = {}  # {br_id: ws_connection}
+        self.message_queues: Dict[str, queue.Queue] = {}  # {br_id: Queue()} for thread-safe message sending
+        self.tx_threads: Dict[str, threading.Thread] = {}  # {br_id: Thread} dedicated TX threads
         self.ipv6_mapping: Dict[str, Dict] = {}  # {ipv6: {'node_name': str, 'br_id': str, 'last_seen': float}}
-        logger.info("🔧 Native WebSocket handler initialized")
+        logger.info("🔧 Native WebSocket handler initialized (TX thread pattern)")
 
     def parse_connection_params(self, environ) -> Dict[str, str]:
         """
@@ -211,6 +218,87 @@ class NativeWebSocketHandler:
         logger.warning(f"⚠️ No BR mapping found for node {node_name}")
         return None
 
+    def _process_outgoing_queue(self, br_id: str, ws) -> int:
+        """
+        Process pending outgoing messages from queue (thread-safe sending)
+
+        This method is called from the WebSocket handler thread to send
+        any messages that were queued by other threads (e.g., HTTP request threads).
+
+        DEPRECATED: This method is no longer used in the TX thread pattern.
+        Messages are now sent by a dedicated TX thread (_tx_thread_worker).
+
+        Args:
+            br_id: Border Router ID
+            ws: WebSocket connection object
+
+        Returns:
+            Number of messages sent
+        """
+        if br_id not in self.message_queues:
+            return 0
+
+        msg_queue = self.message_queues[br_id]
+        sent_count = 0
+
+        # Process all pending messages (non-blocking)
+        while not msg_queue.empty():
+            try:
+                message = msg_queue.get_nowait()
+                ws.send(message)
+                sent_count += 1
+                logger.debug(f"📤 Queue: Sent message to BR {br_id} ({msg_queue.qsize()} remaining)")
+            except queue.Empty:
+                break
+            except Exception as e:
+                logger.error(f"❌ Error sending queued message to BR {br_id}: {e}")
+
+        return sent_count
+
+    def _tx_thread_worker(self, br_id: str, ws):
+        """
+        Dedicated TX thread worker for sending messages to Border Router
+
+        This thread continuously monitors the message queue and sends messages
+        immediately when they become available. It blocks on queue.get() until
+        a message is available or a shutdown sentinel (None) is received.
+
+        This pattern solves the race condition where messages were enqueued but
+        not sent because ws.receive() blocked the main loop.
+
+        Args:
+            br_id: Border Router ID
+            ws: WebSocket connection object
+        """
+        logger.info(f"📤 TX thread started for BR {br_id}")
+
+        try:
+            while True:
+                # Block until message available (or None sentinel for shutdown)
+                message = self.message_queues[br_id].get()
+
+                # Check for shutdown sentinel
+                if message is None:
+                    logger.info(f"🛑 TX thread received shutdown signal for BR {br_id}")
+                    break
+
+                # Send message to Border Router
+                try:
+                    ws.send(message)
+                    logger.info(f"📤 TX→BR {br_id}: Sent {len(message)} bytes")
+                    logger.debug(f"   Content: {message[:200]}...")  # Log first 200 chars
+                except Exception as e:
+                    logger.error(f"❌ TX thread failed to send to BR {br_id}: {e}")
+                    # Don't break - try to send remaining messages
+                    # The RX thread will handle connection cleanup
+
+        except Exception as e:
+            logger.error(f"❌ TX thread crashed for BR {br_id}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+
+        logger.info(f"📤 TX thread stopped for BR {br_id}")
+
     def handle_connection(self, ws, environ):
         """
         Handle incoming WebSocket connection from Border Router
@@ -277,6 +365,20 @@ class NativeWebSocketHandler:
         # Store active connection
         self.active_connections[br_id] = ws
 
+        # Create message queue for this BR (thread-safe communication)
+        self.message_queues[br_id] = queue.Queue()
+
+        # Start dedicated TX thread for sending messages
+        tx_thread = threading.Thread(
+            target=self._tx_thread_worker,
+            args=(br_id, ws),
+            name=f"TX-{br_id}",
+            daemon=True
+        )
+        tx_thread.start()
+        self.tx_threads[br_id] = tx_thread
+        logger.info(f"✅ TX thread started for BR {br_id}")
+
         # Send connection confirmation
         connected_msg = json.dumps({
             'type': 'connected',
@@ -290,9 +392,10 @@ class NativeWebSocketHandler:
 
         logger.info(f"✅ Border Router {br_id} connected and registered")
 
-        # Enter message processing loop
+        # Enter message processing loop (RX only - TX is handled by dedicated thread)
         try:
             while True:
+                # Receive incoming message (blocking)
                 message = ws.receive()
 
                 if message is None:
@@ -304,13 +407,30 @@ class NativeWebSocketHandler:
                 self.handle_message(br_id, message, ws)
 
         except Exception as e:
-            logger.error(f"❌ Error in WebSocket loop for BR {br_id}: {e}")
+            logger.error(f"❌ Error in WebSocket RX loop for BR {br_id}: {e}")
 
         finally:
+            # Signal TX thread to shutdown (send None sentinel)
+            if br_id in self.message_queues:
+                logger.info(f"🛑 Signaling TX thread shutdown for BR {br_id}")
+                self.message_queues[br_id].put(None)
+
+            # Wait for TX thread to finish (with timeout)
+            if br_id in self.tx_threads:
+                tx_thread = self.tx_threads[br_id]
+                tx_thread.join(timeout=2.0)
+                if tx_thread.is_alive():
+                    logger.warning(f"⚠️ TX thread for BR {br_id} did not stop in time")
+                else:
+                    logger.info(f"✅ TX thread for BR {br_id} stopped cleanly")
+                del self.tx_threads[br_id]
+
             # Cleanup: unregister BR and remove from active connections
             self.border_router_manager.unregister_br(br_id)
             if br_id in self.active_connections:
                 del self.active_connections[br_id]
+            if br_id in self.message_queues:
+                del self.message_queues[br_id]
             logger.warning(f"⚠️ Border Router {br_id} disconnected")
 
     def handle_message(self, br_id: str, message: str, ws):
@@ -355,6 +475,10 @@ class NativeWebSocketHandler:
 
             elif msg_type == 'topology_update':
                 self.handle_topology_update(br_id, data)
+
+            elif msg_type == 'scan_node_result':
+                # New: Handle scan_node result for topology discovery
+                self.handle_scan_node_result(br_id, data)
 
             else:
                 logger.warning(f"⚠️ Unknown message type from BR {br_id}: {msg_type}")
@@ -458,6 +582,15 @@ class NativeWebSocketHandler:
                 'timestamp': time.time()
             }, namespace='/')
             logger.info(f"✨ New active node: {node_name} ({source_ipv6}) via {br_id}")
+
+            # 🔄 Déclencher un scan CoAP en arrière-plan pour enrichir la topologie
+            if _topology_refresh_callback:
+                import threading
+                logger.info(f"🔍 Déclenchement scan CoAP pour enrichir topologie...")
+                thread = threading.Thread(target=_topology_refresh_callback)
+                thread.daemon = True
+                thread.start()
+                logger.info(f"✅ Scan CoAP démarré en arrière-plan")
 
         # Increment event counter
         self.border_router_manager.increment_event_counter(br_id)
@@ -657,6 +790,55 @@ class NativeWebSocketHandler:
                 'timestamp': time.time()
             }, namespace='/')
 
+    def handle_scan_node_result(self, br_id: str, data: dict):
+        """
+        Process scan_node result from Border Router
+
+        This handler receives network topology information for a scanned node.
+        The results are aggregated to build the complete network topology.
+
+        Args:
+            br_id: Border Router ID
+            data: Scan result data with target_ipv6, node_name, request_id, success, network_info
+        """
+        target_ipv6 = data.get('target_ipv6')
+        node_name = data.get('node_name')
+        request_id = data.get('request_id')
+        success = data.get('success', False)
+        network_info = data.get('network_info', {})
+        error = data.get('error')
+
+        logger.info(f"📊 SCAN RESULT from BR {br_id}:")
+        logger.info(f"   Node: {node_name} ({target_ipv6})")
+        logger.info(f"   Request ID: {request_id}")
+        logger.info(f"   Success: {success}")
+
+        if not success:
+            logger.error(f"   ❌ Scan failed: {error}")
+            return
+
+        # Log network info
+        logger.info(f"   Network Info:")
+        logger.info(f"      RLOC16: {network_info.get('rloc16')}")
+        logger.info(f"      Role: {network_info.get('role')}")
+        logger.info(f"      Parent: {network_info.get('parent')}")
+        logger.info(f"      Neighbors: {len(network_info.get('neighbors', []))}")
+
+        # TODO: Aggregate results and build topology
+        # For now, just emit to web clients
+        if _socketio:
+            _socketio.emit('scan_node_result', {
+                'br_id': br_id,
+                'node_name': node_name,
+                'target_ipv6': target_ipv6,
+                'request_id': request_id,
+                'success': success,
+                'network_info': network_info,
+                'timestamp': time.time()
+            }, namespace='/')
+
+        logger.info(f"✅ Scan result processed for {node_name}")
+
     def send_command(self, br_id: str, command_data: dict) -> bool:
         """
         Send command to Border Router
@@ -738,6 +920,54 @@ class NativeWebSocketHandler:
             return True
         except Exception as e:
             logger.error(f"❌ Failed to send command: {e}")
+            return False
+
+    def send_scan_node_command(self, br_id: str, target_ipv6: str, node_name: str, request_id: str) -> bool:
+        """
+        Send scan_node command to Border Router for network topology discovery
+
+        This method enqueues a command message to be sent by the BR handler thread.
+        The BR acts as a transparent proxy: WebSocket ← Python → BR → CoAP → Node
+
+        Args:
+            br_id: Border Router ID
+            target_ipv6: Target node IPv6 address
+            node_name: Node name (for logging)
+            request_id: Unique request identifier
+
+        Returns:
+            True if command was enqueued successfully
+        """
+        # Check if BR is connected
+        if br_id not in self.active_connections:
+            logger.error(f"❌ BR {br_id} not connected (available: {list(self.active_connections.keys())})")
+            return False
+
+        # Check if queue exists
+        if br_id not in self.message_queues:
+            logger.error(f"❌ No message queue for BR {br_id}")
+            return False
+
+        # Build scan_node command message
+        # IMPORTANT: Use 'command' field, not 'type', to match BR handler
+        scan_msg = {
+            'command': 'scan_node',
+            'target_ipv6': target_ipv6,
+            'node_name': node_name,
+            'request_id': request_id
+        }
+
+        # Enqueue message for thread-safe sending
+        try:
+            message = json.dumps(scan_msg)
+            msg_queue = self.message_queues[br_id]
+            msg_queue.put(message)
+            logger.info(f"🔍 Scan enqueued: {node_name} → {target_ipv6} via BR {br_id}")
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to enqueue scan for {node_name}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
 
     def is_br_connected(self, br_id: str) -> bool:

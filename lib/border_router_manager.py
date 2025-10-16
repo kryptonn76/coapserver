@@ -205,6 +205,31 @@ class BorderRouterManager:
             time_since_heartbeat = (datetime.now() - br_info['last_heartbeat']).total_seconds()
             return time_since_heartbeat < self.heartbeat_timeout
 
+    def get_active_border_routers(self) -> List[Dict]:
+        """
+        Récupère la liste des Border Routers actifs (online)
+
+        Returns:
+            Liste de dicts avec les infos des BRs online
+        """
+        with self.lock:
+            active_brs = []
+            for br_id, br_info in self.border_routers.items():
+                # Vérifier online sans rappeler is_br_online() (évite deadlock)
+                if br_info['status'] == 'online':
+                    time_since_heartbeat = (datetime.now() - br_info['last_heartbeat']).total_seconds()
+                    if time_since_heartbeat < self.heartbeat_timeout:
+                        active_brs.append({
+                            'br_id': br_id,
+                            'sid': br_info['sid'],
+                            'network_prefix': br_info.get('network_prefix', ''),
+                            'nodes': br_info.get('nodes', []),
+                            'nodes_count': br_info.get('nodes_count', 0),
+                            'connected_at': br_info['connected_at'],
+                            'last_heartbeat': br_info['last_heartbeat']
+                        })
+            return active_brs
+
     def get_all_brs_status(self) -> Dict[str, Dict]:
         """
         Récupère le statut de tous les BR
