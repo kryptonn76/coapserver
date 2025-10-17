@@ -206,16 +206,33 @@ class NativeWebSocketHandler:
                     print(f"   ✅ MATCH: {ipv6} → {node_name}")
                     return node_name
 
-            # Not found in config - try RLOC resolution
+            # Not found in config - try alternative resolution methods
             print(f"   ❌ NO MATCH in adresses.json ({total_nodes} nodes checked)")
 
-            # Check if it's a RLOC address
+            # Try 1: Check if it's a mesh-local EID by searching in topology
+            topology = self.topology_aggregator.get_topology()
+            for node in topology.get('nodes', []):
+                # Check if this IPv6 is one of the node's MLEIDs
+                node_mleids = [mleid.lower() for mleid in node.get('mleids', [])]
+                if ipv6_lower in node_mleids:
+                    print(f"   🔍 Found mesh-local EID in topology, resolving to business name...")
+
+                    # Try to find the Thread global address (fd78:...) for this node in adresses.json
+                    # by checking all MLEIDs of this node
+                    for mleid in node.get('mleids', []):
+                        for biz_name, biz_data in config.get('nodes', {}).items():
+                            if biz_data.get('address', '').lower() == mleid.lower():
+                                print(f"   ✅ Mesh-local→Business name: {ipv6} → {biz_name}")
+                                return biz_name
+
+                    print(f"   ⚠️  Mesh-local EID found in topology but no business name match")
+
+            # Try 2: Check if it's a RLOC address
             rloc16 = self.extract_rloc16_from_rloc_ipv6(ipv6)
             if rloc16:
                 print(f"   🔍 Trying to resolve via Network Diagnostic topology with RLOC16: {rloc16}")
 
                 # Search in Network Diagnostic topology
-                topology = self.topology_aggregator.get_topology()
                 for node in topology.get('nodes', []):
                     # Check if RLOC16 matches
                     if rloc16.lower() in [r.lower() for r in node.get('rloc16s', [])]:

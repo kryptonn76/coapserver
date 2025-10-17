@@ -2165,13 +2165,17 @@ def get_nodes():
 
             # Récupérer l'état de la batterie
             battery = None
-            if coap_server and name in coap_server.battery_status and coap_server.battery_status[name]['current']:
-                current = coap_server.battery_status[name]['current']
-                battery = {
-                    'voltage': current['voltage'],
-                    'percentage': current['percentage'],
-                    'timestamp': current['timestamp'].isoformat()
-                }
+            if coap_server and name in coap_server.battery_status:
+                battery_data = coap_server.battery_status[name]
+                # Supporter les deux formats: {'current': {...}} et {'voltage': ..., 'percentage': ...}
+                current = battery_data.get('current') or battery_data
+                if current and isinstance(current, dict):
+                    timestamp = current.get('timestamp')
+                    battery = {
+                        'voltage': current.get('voltage', 0),
+                        'percentage': current.get('percentage', 0),
+                        'timestamp': timestamp.isoformat() if hasattr(timestamp, 'isoformat') else timestamp
+                    }
 
             # Récupérer l'état des LEDs
             led_states = coap_server.led_states.get(active_info['ipv6'], {}) if coap_server else {}
