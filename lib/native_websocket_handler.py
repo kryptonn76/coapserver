@@ -122,12 +122,68 @@ class NativeWebSocketHandler:
             print(f"❌ BR {br_id} authentication failed")
             return False
 
-    def resolve_ipv6_to_node_name(self, ipv6: str) -> Optional[str]:
+    def extract_rloc16_from_rloc_ipv6(self, ipv6: str) -> Optional[str]:
         """
-        Resolve IPv6 address to node name using config/adresses.json
+        Extract RLOC16 from IPv6 RLOC address
+
+        RLOC (Routing Locator) addresses have a specific pattern in the Interface Identifier (last 64 bits):
+        Pattern: 00:00:00:ff:fe:00:XX:XX where XX:XX is the RLOC16
 
         Args:
-            ipv6: IPv6 address (e.g., "fd78:8e78:3bfe:1:1234:5678:90ab:cdef")
+            ipv6: IPv6 address (e.g., "fdc7:4097:c896:f63b:0:ff:fe00:c400")
+
+        Returns:
+            RLOC16 as string (e.g., "0xc400") or None if not a RLOC address
+        """
+        try:
+            import ipaddress
+
+            # Parse IPv6
+            ipv6_obj = ipaddress.IPv6Address(ipv6)
+            ipv6_int = int(ipv6_obj)
+
+            # Extract IID (last 64 bits)
+            iid = ipv6_int & ((1 << 64) - 1)  # Mask to get last 64 bits
+
+            # Convert IID to bytes (8 bytes)
+            iid_bytes = iid.to_bytes(8, 'big')
+
+            # Check RLOC pattern: 00:00:00:ff:fe:00:xx:xx
+            if (iid_bytes[0] == 0x00 and
+                iid_bytes[1] == 0x00 and
+                iid_bytes[2] == 0x00 and
+                iid_bytes[3] == 0xff and
+                iid_bytes[4] == 0xfe and
+                iid_bytes[5] == 0x00):
+
+                # Extract RLOC16 (last 2 bytes)
+                rloc16_high = iid_bytes[6]
+                rloc16_low = iid_bytes[7]
+                rloc16 = (rloc16_high << 8) | rloc16_low
+
+                rloc16_str = f"0x{rloc16:04x}"
+                print(f"   🔍 Detected RLOC address, extracted RLOC16: {rloc16_str}")
+                return rloc16_str
+
+            # Not a RLOC address
+            return None
+
+        except Exception as e:
+            print(f"❌ Error extracting RLOC16 from {ipv6}: {e}")
+            return None
+
+    def resolve_ipv6_to_node_name(self, ipv6: str) -> Optional[str]:
+        """
+        Resolve IPv6 address to node name using config/adresses.json and Network Diagnostic topology
+
+        Strategy:
+        1. First, try to match IPv6 in adresses.json (ML-EID)
+        2. If not found, check if it's a RLOC address
+        3. If RLOC, extract RLOC16 and search in Network Diagnostic topology
+        4. If found in topology, try to resolve business name from ML-EID
+
+        Args:
+            ipv6: IPv6 address (e.g., "fd78:8e78:3bfe:1:1234:5678:90ab:cdef" or RLOC)
 
         Returns:
             node_name (e.g., "n01") or None if not found
@@ -150,8 +206,41 @@ class NativeWebSocketHandler:
                     print(f"   ✅ MATCH: {ipv6} → {node_name}")
                     return node_name
 
-            # Not found in config
-            print(f"   ❌ NO MATCH: IPv6 {ipv6} not found in adresses.json ({total_nodes} nodes checked)")
+            # Not found in config - try RLOC resolution
+            print(f"   ❌ NO MATCH in adresses.json ({total_nodes} nodes checked)")
+
+            # Check if it's a RLOC address
+            rloc16 = self.extract_rloc16_from_rloc_ipv6(ipv6)
+            if rloc16:
+                print(f"   🔍 Trying to resolve via Network Diagnostic topology with RLOC16: {rloc16}")
+
+                # Search in Network Diagnostic topology
+                topology = self.topology_aggregator.get_topology()
+                for node in topology.get('nodes', []):
+                    # Check if RLOC16 matches
+                    if rloc16.lower() in [r.lower() for r in node.get('rloc16s', [])]:
+                        print(f"   ✅ Found node in topology with RLOC16 {rloc16}")
+
+                        # Try to resolve business name from ML-EID
+                        mleids = node.get('mleids', [])
+                        if mleids:
+                            ml_eid = mleids[0]  # Use first ML-EID
+                            print(f"   🔍 Resolving ML-EID {ml_eid} to business name...")
+
+                            for biz_name, biz_data in config.get('nodes', {}).items():
+                                if biz_data.get('address', '').lower() == ml_eid.lower():
+                                    print(f"   ✅ RLOC→ML-EID→Business name: {rloc16} → {ml_eid} → {biz_name}")
+                                    return biz_name
+
+                            print(f"   ⚠️  ML-EID {ml_eid} not in config, using RLOC16 as name")
+                            return rloc16  # Use RLOC16 as fallback name
+
+                        # No ML-EID, use RLOC16 as name
+                        print(f"   ⚠️  No ML-EID found, using RLOC16 as name")
+                        return rloc16
+
+                print(f"   ❌ RLOC16 {rloc16} not found in Network Diagnostic topology")
+
             return None
 
         except FileNotFoundError:
@@ -159,6 +248,8 @@ class NativeWebSocketHandler:
             return None
         except Exception as e:
             print(f"❌ Error resolving IPv6: {e}")
+            import traceback
+            print(traceback.format_exc())
             return None
 
     def resolve_node_name_to_ipv6(self, node_name: str) -> Optional[str]:
@@ -950,6 +1041,7 @@ class NativeWebSocketHandler:
         self.topology_aggregator.upsert_node(data, br_id)
 
         # Try to resolve business name from ML-EID
+        node_name = None  # Initialize to track resolved name
         mleids = self.topology_aggregator.extract_mleids(data.get('ipv6_list', []))
         if mleids:
             # Use first ML-EID for business name lookup
@@ -964,15 +1056,28 @@ class NativeWebSocketHandler:
                 else:
                     print(f"   ✅ Enriched: {data.get('ext_addr', '')[:8]}... → {node_name}")
 
-        # Emit to web clients
+                # Update name→RLOC16 mapping for badge positioning
+                rloc16 = data.get('rloc16')
+                if _coap and rloc16:
+                    _coap.name_to_rloc16[node_name] = rloc16
+                    print(f"   📍 Badge mapping: {node_name} → {rloc16}")
+
+        # Emit to web clients with enriched business name
         if _socketio:
-            _socketio.emit('diagnostic_node', {
+            event_data = {
                 'br_id': br_id,
                 **data,
                 'mleids': mleids,
                 'is_br': is_border_router,
                 'timestamp': time.time()
-            }, namespace='/')
+            }
+
+            # Add resolved business name if available
+            if node_name:
+                event_data['business_name'] = node_name
+                print(f"   📡 Emitting diagnostic_node with business_name: {node_name}")
+
+            _socketio.emit('diagnostic_node', event_data, namespace='/')
 
     def handle_diagnostic_link(self, br_id: str, data: dict):
         """

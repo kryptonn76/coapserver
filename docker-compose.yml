@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  coap-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: luxnavix/coap-server:latest
+    container_name: luxnavix-coap-server
+    restart: unless-stopped
+
+    # Ports
+    ports:
+      - "5001:5001"      # Web interface Flask
+      - "5683:5683/udp"  # CoAP server
+
+    # Variables d'environnement
+    environment:
+      # ThingsBoard
+      - TB_URL=${TB_URL:-https://platform.tamtamdeals.com}
+      - TB_USERNAME=${TB_USERNAME}
+      - TB_PASSWORD=${TB_PASSWORD}
+
+      # Server
+      - COAP_PORT=${COAP_PORT:-5683}
+      - WEB_PORT=${WEB_PORT:-5001}
+
+      # Network Configuration
+      - WG_ENDPOINT=${WG_ENDPOINT}
+      - WG_BORDER_ROUTER_PUBLIC_KEY=${WG_BORDER_ROUTER_PUBLIC_KEY}
+      - WG_SERVER_PRIVATE_KEY=${WG_SERVER_PRIVATE_KEY}
+      - THREAD_PREFIX=${THREAD_PREFIX:-fd78:8e78:3bfe:1::/64}
+      - VPN_SERVER_IPV6=${VPN_SERVER_IPV6:-fd00:db8:1::1/64}
+      - VPN_BORDER_ROUTER_IPV6=${VPN_BORDER_ROUTER_IPV6:-fd00:db8:1::2/64}
+
+      # Border Router WebSocket Mode
+      - USE_WEBSOCKET_BR=${USE_WEBSOCKET_BR:-false}
+      - BR_AUTH_ENABLED=${BR_AUTH_ENABLED:-true}
+      - BR_HEARTBEAT_TIMEOUT=${BR_HEARTBEAT_TIMEOUT:-30}
+
+      # Optional
+      - DDNS_HOSTNAME=${DDNS_HOSTNAME}
+      - DEBUG=${DEBUG:-False}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-for-demo}
+
+    # Volumes pour la persistance des données
+    volumes:
+      - ./config:/app/config:rw
+      - ./data:/app/data:rw
+      - ./logs:/app/logs:rw
+
+    # Réseau
+    networks:
+      - coap-network
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Limits de ressources (ajuster selon les besoins)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  coap-network:
+    driver: bridge

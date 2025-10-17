@@ -676,8 +676,8 @@
                 updateStats(data);
                 updateNodeList(data);
 
-                // Charger aussi les Border Routers pour les afficher
-                await loadBorderRouters();
+                // Border Routers are now identified in the topology with is_br flag
+                // No need to load them separately
             } catch (error) {
                 console.error('Error loading topology:', error);
             }
@@ -1546,6 +1546,12 @@
             if (Object.keys(savedPositions).length > 0) {
                 syncPositionsToServer(savedPositions);
             }
+
+            // Déclencher un scan initial automatique pour avoir une carte fraîche
+            setTimeout(() => {
+                console.log('🔍 Scan initial automatique au chargement de la page');
+                refreshTopology();
+            }, 2000);
 
             // Auto-refresh toutes les 10 secondes (au lieu de 30)
             setInterval(loadTopology, 10000);

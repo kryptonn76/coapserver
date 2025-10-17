@@ -11,13 +11,28 @@ let currentTrackingNode = null;  // Node actuellement active en mode suivi
 // Initialisation au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initialisation de l\'interface IoT Control Center');
-    
+
     // Charger les nodes
     loadNodes();
-    
+
     // Configurer les WebSocket handlers
     setupSocketHandlers();
-    
+
+    // Déclencher un scan initial automatique pour avoir une topologie fraîche
+    setTimeout(() => {
+        console.log('🔍 Scan initial automatique au chargement de la page d\'accueil');
+        fetch('/api/trigger_scan', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Scan initial déclenché:', data.message);
+                } else {
+                    console.warn('⚠️ Scan initial échoué:', data.message);
+                }
+            })
+            .catch(error => console.error('❌ Erreur scan initial:', error));
+    }, 2000);
+
     // Rafraîchir les données périodiquement
     setInterval(loadNodes, 10000); // Toutes les 10 secondes
 });

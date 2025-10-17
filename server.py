@@ -391,6 +391,30 @@ class CoAPServer:
         if code:
             self.ble_detections[code] = detection_data
 
+        # Stocker dans multi-détections pour triangulation (fenêtre de 5 secondes)
+        now = time.time()
+        if ble_addr not in self.ble_multi_detections:
+            self.ble_multi_detections[ble_addr] = []
+
+        # Ajouter la nouvelle détection
+        self.ble_multi_detections[ble_addr].append({
+            'node': node_name,
+            'rssi': rssi,
+            'timestamp': now,
+            'code': code
+        })
+
+        # Nettoyer les détections > 5 secondes
+        self.ble_multi_detections[ble_addr] = [
+            d for d in self.ble_multi_detections[ble_addr]
+            if (now - d['timestamp']) < 5.0
+        ]
+
+        # Calculer et émettre la position du badge
+        print(f"🔍 DEBUG BR-WS: Appel calculate_and_emit_badge_position() pour {code}")
+        self.calculate_and_emit_badge_position(ble_addr, code)
+        print(f"✅ DEBUG BR-WS: Retour de calculate_and_emit_badge_position()")
+
         # Émettre via WebSocket (utiliser start_background_task pour thread-safety)
         def _emit_ble_events():
             print(f"🔍 socketio id @emit: {id(socketio)}, module: {__name__}")
@@ -701,7 +725,9 @@ class CoAPServer:
             ]
 
             # Calculer et émettre la position du badge
+            print(f"🔍 DEBUG: Appel calculate_and_emit_badge_position() pour {code}")
             self.calculate_and_emit_badge_position(ble_addr, code)
+            print(f"✅ DEBUG: Retour de calculate_and_emit_badge_position()")
 
             # Ajouter à l'historique (limité aux 1000 dernières détections)
             self.ble_history.append({
@@ -738,17 +764,20 @@ class CoAPServer:
         """Calcule la position d'un badge par triangulation RSSI et émet via WebSocket"""
         try:
             detections = self.ble_multi_detections.get(badge_addr, [])
+            print(f"🔍 DEBUG badge {code}: {len(detections)} détections totales")
 
-            # Besoin d'au moins 2 routeurs pour triangulation
-            if len(detections) < 2:
+            # Accepter au moins 1 router (anciennement 2 pour triangulation)
+            if len(detections) < 1:
+                print(f"   ❌ Aucune détection, abandon")
                 return
 
             # Filtrer pour garder détections très récentes (< 1 seconde)
-            # Besoin d'au moins 2 routeurs qui détectent dans la même seconde
             now = time.time()
             recent_detections = [d for d in detections if (now - d['timestamp']) < 1.0]
+            print(f"   🔍 {len(recent_detections)} détections récentes (< 1s)")
 
-            if len(recent_detections) < 2:
+            if len(recent_detections) < 1:
+                print(f"   ❌ Aucune détection récente, abandon")
                 return
 
             # IMPORTANT: Garder uniquement la MEILLEURE détection par routeur (éviter duplicates)
@@ -759,17 +788,72 @@ class CoAPServer:
                 if node not in best_by_router or d['rssi'] > best_by_router[node]['rssi']:
                     best_by_router[node] = d
 
-            # Convertir en liste et vérifier qu'on a au moins 2 routeurs DIFFÉRENTS
+            # Convertir en liste
             unique_detections = list(best_by_router.values())
+            router_names = [d['node'] for d in unique_detections]
+            print(f"   🔍 {len(unique_detections)} routeurs uniques: {router_names}")
 
-            if len(unique_detections) < 2:
+            if len(unique_detections) < 1:
+                print(f"   ❌ Aucun routeur unique, abandon")
                 return
 
             # Trier par RSSI (meilleurs signaux en premier) et garder top 5 routeurs
             unique_detections.sort(key=lambda d: d['rssi'], reverse=True)
             top_detections = unique_detections[:5]
+            print(f"   ✅ {len(top_detections)} routeurs pour calcul position")
 
-            # Calculer position par barycentre pondéré
+            # CAS SPÉCIAL: 1 seul router détecte le badge
+            # → Juxtaposer le badge au node avec un offset aléatoire
+            if len(top_detections) == 1:
+                detection = top_detections[0]
+                node_name = detection['node']
+                rssi = detection['rssi']
+
+                # Récupérer position du node
+                node_pos = self.node_positions.get(node_name)
+                if not node_pos:
+                    # Chercher par RLOC16 si pas trouvé par nom
+                    rloc16 = self.name_to_rloc16.get(node_name)
+                    if rloc16:
+                        node_pos = self.node_positions.get(rloc16)
+
+                if not node_pos:
+                    print(f"⚠️ Badge {code}: 1 router ({node_name}) mais pas de position connue - abandon")
+                    return
+
+                # Juxtaposer badge au node avec offset aléatoire (±20-30 pixels)
+                import random
+                offset_x = random.uniform(-30, 30)
+                offset_y = random.uniform(-30, 30)
+
+                pos_x = node_pos['x'] + offset_x
+                pos_y = node_pos['y'] + offset_y
+                confidence = 50  # Confidence moyenne (1 seul router)
+
+                # Stocker position
+                self.badge_positions[badge_addr] = {
+                    'x': pos_x,
+                    'y': pos_y,
+                    'confidence': confidence,
+                    'timestamp': datetime.now()
+                }
+
+                # Émettre via WebSocket
+                socketio.emit('badge_position', {
+                    'badge_addr': badge_addr,
+                    'code': code,
+                    'x': pos_x,
+                    'y': pos_y,
+                    'confidence': confidence,
+                    'rssi_values': {node_name: rssi},
+                    'nb_routers': 1,
+                    'timestamp': datetime.now().isoformat()
+                })
+
+                print(f"📍 {code}: ({pos_x:.0f},{pos_y:.0f}) {confidence}% [1 router: {node_name}]")
+                return
+
+            # CAS NORMAL: 2+ routers → Triangulation par barycentre pondéré RSSI
             total_weight = 0
             weighted_x = 0
             weighted_y = 0
@@ -1878,6 +1962,16 @@ def audio_library_page():
     """Interface web pour la bibliothèque audio"""
     return render_template('audio_library.html')
 
+@app.route('/api/health')
+def health_check():
+    """Endpoint de health check pour Docker et monitoring"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': time.time(),
+        'service': 'luxnavix-coap-server',
+        'version': '1.0'
+    }), 200
+
 @app.route('/api/topology')
 def get_topology():
     """Retourne la topologie actuelle du réseau depuis Network Diagnostic"""
@@ -2034,51 +2128,91 @@ def trigger_scan():
 
 @app.route('/api/nodes')
 def get_nodes():
-    """Retourne la liste des nodes ACTIFS (dynamique) avec leurs états"""
-    # 🆕 Obtenir les nodes actifs depuis le WebSocket handler (last_seen < 60s)
-    active_nodes = native_ws_handler.get_active_nodes(timeout_seconds=60)
+    """Retourne TOUS les nodes de adresses.json, avec nodes actifs en premier"""
+    global coap_server
+    import json
 
-    print(f"📋 /api/nodes: {len(active_nodes)} active nodes found")
+    # 1️⃣ Charger tous les nodes depuis adresses.json
+    try:
+        with open('config/adresses.json', 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        all_configured_nodes = config.get('nodes', {})
+    except Exception as e:
+        print(f"❌ Error loading adresses.json: {e}")
+        all_configured_nodes = {}
 
+    # 2️⃣ Obtenir les nodes actifs (last_seen < 60s)
+    active_nodes_list = native_ws_handler.get_active_nodes(timeout_seconds=60)
+
+    # 3️⃣ Créer un dictionnaire des nodes actifs pour lookup rapide
+    active_nodes_dict = {node['name']: node for node in active_nodes_list}
+
+    print(f"📋 /api/nodes: {len(all_configured_nodes)} configured nodes, {len(active_nodes_dict)} active")
+
+    # 4️⃣ Construire la liste complète
     nodes_data = []
-    for node_info in active_nodes:
-        name = node_info['name']
-        ipv6 = node_info['ipv6']
-        br_id = node_info['br_id']
-        last_seen = node_info['last_seen']
-        seconds_ago = node_info['seconds_ago']
 
-        print(f"   - {name} @ {ipv6} (via {br_id}, seen {seconds_ago}s ago)")
+    for name, node_config in all_configured_nodes.items():
+        ipv6 = node_config.get('address')
+        ordre = node_config.get('ordre', 0)
 
-        # Récupérer l'état de la batterie
-        battery = None
-        if name in coap_server.battery_status and coap_server.battery_status[name]['current']:
-            current = coap_server.battery_status[name]['current']
-            battery = {
-                'voltage': current['voltage'],
-                'percentage': current['percentage'],
-                'timestamp': current['timestamp'].isoformat()
-            }
+        # Vérifier si le node est actif
+        if name in active_nodes_dict:
+            # Node ACTIF - inclure toutes les données temps réel
+            active_info = active_nodes_dict[name]
 
-        # Récupérer l'état des LEDs
-        led_states = coap_server.led_states.get(ipv6, {})
+            print(f"   🟢 {name} @ {ipv6} (ONLINE via {active_info['br_id']}, seen {active_info['seconds_ago']}s ago)")
 
-        nodes_data.append({
-            'name': name,
-            'address': ipv6,
-            'br_id': br_id,
-            'last_seen': last_seen,
-            'seconds_ago': seconds_ago,
-            'ordre': 0,  # Ordre non applicable pour nodes dynamiques
-            'battery': battery,
-            'leds': {
-                'red': led_states.get('red', False),
-                'light': led_states.get('light', False)
-            },
-            'online': True  # Par définition, si dans active_nodes, alors online
-        })
+            # Récupérer l'état de la batterie
+            battery = None
+            if coap_server and name in coap_server.battery_status and coap_server.battery_status[name]['current']:
+                current = coap_server.battery_status[name]['current']
+                battery = {
+                    'voltage': current['voltage'],
+                    'percentage': current['percentage'],
+                    'timestamp': current['timestamp'].isoformat()
+                }
 
-    print(f"✅ /api/nodes: Returning {len(nodes_data)} active nodes")
+            # Récupérer l'état des LEDs
+            led_states = coap_server.led_states.get(active_info['ipv6'], {}) if coap_server else {}
+
+            nodes_data.append({
+                'name': name,
+                'address': ipv6,
+                'br_id': active_info['br_id'],
+                'last_seen': active_info['last_seen'],
+                'seconds_ago': active_info['seconds_ago'],
+                'ordre': ordre,
+                'battery': battery,
+                'leds': {
+                    'red': led_states.get('red', False),
+                    'light': led_states.get('light', False)
+                },
+                'online': True
+            })
+        else:
+            # Node INACTIF - pas de données temps réel
+            print(f"   🔴 {name} @ {ipv6} (OFFLINE)")
+
+            nodes_data.append({
+                'name': name,
+                'address': ipv6,
+                'br_id': None,
+                'last_seen': None,
+                'seconds_ago': None,
+                'ordre': ordre,
+                'battery': None,
+                'leds': {
+                    'red': False,
+                    'light': False
+                },
+                'online': False
+            })
+
+    # 5️⃣ Trier : nodes connectés en premier, puis par nom
+    nodes_data.sort(key=lambda n: (not n['online'], n['name']))
+
+    print(f"✅ /api/nodes: Returning {len(nodes_data)} total nodes ({len(active_nodes_dict)} online, {len(nodes_data) - len(active_nodes_dict)} offline)")
     return jsonify(nodes_data)
 
 @app.route('/api/devices')

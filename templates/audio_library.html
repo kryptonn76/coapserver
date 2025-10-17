@@ -1,12 +1,17 @@
+{% set page = 'audio_library' %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bibliothèque Audio - ESP32 OpenThread</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='audio_library.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
+    {% include 'nav_menu.html' %}
+
     <div class="container">
         <header>
             <h1>📢 Bibliothèque Audio ESP32</h1>

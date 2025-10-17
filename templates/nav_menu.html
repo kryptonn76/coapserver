@@ -10,9 +10,9 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="/audio-control" class="nav-link {% if page == 'audio' %}active{% endif %}">
-                    <span class="nav-icon">🔊</span>
-                    <span>Audio PTI</span>
+                <a href="/audio-library" class="nav-link {% if page == 'audio_library' %}active{% endif %}">
+                    <span class="nav-icon">🎵</span>
+                    <span>Bibliothèque Audio</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -39,6 +39,12 @@
                     <span>Devices</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <button class="nav-action-btn" id="refreshBtn" onclick="triggerNetworkScan()" title="Déclencher un scan Network Diagnostic">
+                    <span class="nav-icon" id="refreshIcon">🔄</span>
+                    <span>Scan Réseau</span>
+                </button>
+            </li>
         </ul>
     </div>
 </nav>
@@ -48,5 +54,64 @@
 function toggleNav() {
     const navMenu = document.getElementById('navMenu');
     navMenu.classList.toggle('active');
+}
+
+// Déclencher un scan réseau Network Diagnostic
+async function triggerNetworkScan() {
+    const btn = document.getElementById('refreshBtn');
+    const icon = document.getElementById('refreshIcon');
+
+    // Désactiver le bouton et afficher le spinner
+    btn.disabled = true;
+    btn.classList.add('loading');
+    icon.textContent = '⏳';
+
+    try {
+        const response = await fetch('/api/trigger_scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Succès - afficher temporairement une coche
+            icon.textContent = '✅';
+            console.log('✅ Scan réseau déclenché avec succès:', result.message);
+
+            // Restaurer après 2 secondes
+            setTimeout(() => {
+                icon.textContent = '🔄';
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            }, 2000);
+        } else {
+            // Erreur
+            icon.textContent = '❌';
+            console.error('❌ Erreur scan réseau:', result.message);
+            alert('Erreur: ' + (result.message || 'Impossible de déclencher le scan'));
+
+            // Restaurer après 3 secondes
+            setTimeout(() => {
+                icon.textContent = '🔄';
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            }, 3000);
+        }
+    } catch (error) {
+        // Erreur réseau
+        icon.textContent = '❌';
+        console.error('❌ Erreur lors du scan:', error);
+        alert('Erreur réseau: ' + error.message);
+
+        // Restaurer après 3 secondes
+        setTimeout(() => {
+            icon.textContent = '🔄';
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }, 3000);
+    }
 }
 </script>
