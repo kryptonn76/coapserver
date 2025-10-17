@@ -1,9 +1,11 @@
+{% set page = 'beacons' %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BLE Beacon Tracking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
@@ -445,6 +447,8 @@
     </style>
 </head>
 <body>
+    {% include 'nav_menu.html' %}
+
     <div class="container">
         <header>
             <h1>

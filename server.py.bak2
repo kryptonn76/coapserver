@@ -35,14 +35,7 @@ from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from flask_sock import Sock
-# import logging  # Removed - using print() instead
-
-# Configuration du logging (removed - using print() instead)
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-#     datefmt='%H:%M:%S'
-# )
+import logging
 
 # Import ThingsBoard Location Tracker (optionnel)
 try:
@@ -67,9 +60,7 @@ import uuid
 from lib.registry import NodeRegistry
 from lib.thingsboard_client import ThingsBoardClient
 from lib.tracking.badge_tracker import BadgeTracker
-# ⚠️ CoAPClient import SUPPRIMÉ - Les appels CoAP directs sont désactivés
-# from lib.coap.client import CoAPClient
-# Les fonctions de parsing sont conservées pour RECEVOIR des messages CoAP (serveur uniquement)
+from lib.coap.client import CoAPClient
 from lib.coap.protocol import parse_coap_packet, create_coap_response
 
 # Charger les variables d'environnement
@@ -143,9 +134,9 @@ def socketio_emit_worker():
 socketio_worker_thread = threading.Thread(target=socketio_emit_worker, daemon=True)
 socketio_worker_thread.start()
 
-# Réduire les logs Flask (removed - using print() instead)
-# log = logging.getLogger('werkzeug')
-# log.setLevel(logging.ERROR)
+# Réduire les logs Flask
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 # Configuration ThingsBoard
 TB_CONFIG = {
@@ -157,20 +148,91 @@ TB_CONFIG = {
 # NodeRegistry maintenant importé depuis lib/registry.py
 # ThingsBoardClient maintenant importé depuis lib/thingsboard_client.py
 
+class BadgeTracker:
+    """Tracks badge code sequences for quality control (po1→po2→...→po0→po1)"""
+
+    def __init__(self, addr):
+        self.addr = addr
+        self.last_code = None
+        self.last_timestamp = 0
+        self.sequence_errors = 0  # Counter for sequence gaps
+        self.total_expected = 0   # Total frames expected since first seen
+        self.first_seen = time.time()
+
+    def check_sequence(self, new_code, timestamp):
+        """Check sequence continuity po1→po2→...→po0→po1
+
+        Returns:
+            (is_valid, gap): is_valid=True if sequence correct, gap=number of missed frames
+        """
+        if self.last_code is None:
+            # First frame
+            self.last_code = new_code
+            self.last_timestamp = timestamp
+            self.total_expected = 1
+            return (True, 0)
+
+        # Calculate expected code
+        last_digit = int(self.last_code[2])
+        if last_digit == 9:
+            expected_digit = 0
+        elif last_digit == 0:
+            expected_digit = 1
+        else:
+            expected_digit = last_digit + 1
+
+        expected_code = f"po{expected_digit}"
+
+        # Calculate gap
+        gap = 0
+        if new_code != expected_code:
+            gap = self._calculate_gap(self.last_code, new_code)
+            self.sequence_errors += gap
+
+        # Update state
+        self.last_code = new_code
+        self.last_timestamp = timestamp
+        self.total_expected += (gap + 1)  # Add gap + this frame
+
+        return (new_code == expected_code, gap)
+
+    def _calculate_gap(self, old_code, new_code):
+        """Calculate number of missed frames between old_code and new_code"""
+        old_digit = int(old_code[2])
+        new_digit = int(new_code[2])
+
+        # Map to sequence index: po1=1, po2=2, ..., po9=9, po0=10
+        old_idx = old_digit if old_digit != 0 else 10
+        new_idx = new_digit if new_digit != 0 else 10
+
+        # Calculate gap with wraparound (cycle of 10)
+        if new_idx > old_idx:
+            gap = new_idx - old_idx - 1
+        else:
+            gap = (10 - old_idx) + new_idx - 1
+
+        return gap if gap > 0 else 0
+
+    def get_stats(self):
+        """Get tracking statistics"""
+        runtime = time.time() - self.first_seen
+        received = self.total_expected - self.sequence_errors
+        success_rate = 100.0 * received / self.total_expected if self.total_expected > 0 else 0
+
+        return {
+            'addr': self.addr,
+            'runtime_sec': runtime,
+            'total_expected': self.total_expected,
+            'received': received,
+            'missed': self.sequence_errors,
+            'success_rate': success_rate,
+            'last_code': self.last_code
+        }
+
 class CoAPServer:
-    """
-    Serveur CoAP avec socket UDP simple et intégration ThingsBoard WebSocket
-
-    ⚠️ ARCHITECTURE CoAP:
-    - Ce serveur REÇOIT uniquement les messages CoAP des nodes (mode serveur)
-    - Il NE DOIT PAS envoyer de requêtes CoAP directes (mode client DÉSACTIVÉ)
-    - Toutes les commandes aux nodes passent par les Border Routers en WebSocket:
-        Python Server → WebSocket → Border Router → CoAP → Thread Node
-
-    Les appels directs CoAP (send_coap_post) sont bloqués pour garantir cette architecture.
-    """
-
-    def __init__(self, socketio_instance=None, tb_config=None):
+    """Serveur CoAP avec socket UDP simple et intégration ThingsBoard WebSocket"""
+    
+    def __init__(self):
         self.registry = NodeRegistry()
         self.running = False
         self.sock = None
@@ -184,14 +246,7 @@ class CoAPServer:
         self.name_to_rloc16 = {}  # Mapping nom→RLOC16 (ex: "n01" → "0x1800")
         self.ble_cache = {}  # Cache de déduplication globale {addr_code: timestamp}
         self.ble_history = []  # Historique complet des détections pour la page web
-
-        # Use provided socketio or fallback to global
-        sio = socketio_instance if socketio_instance is not None else socketio
-        tb_cfg = tb_config if tb_config is not None else TB_CONFIG
-
         self.thingsboard = ThingsBoardClient(
-            tb_config=tb_cfg,
-            socketio=sio,
             on_telemetry_update=self.handle_tb_telemetry_update,
             on_location_change=self.handle_location_change
         )  # Client ThingsBoard avec callbacks
@@ -204,26 +259,136 @@ class CoAPServer:
         # Badge sequence tracking for quality control
         self.badge_trackers = {}  # {ble_addr: BadgeTracker}
 
-    # Méthodes CoAP parse_coap_packet, create_coap_response et create_coap_post_packet
-    # maintenant importées depuis lib/coap/protocol.py
-
+    def parse_coap_packet(self, data):
+        """Parse basique d'un paquet CoAP"""
+        if len(data) < 4:
+            return None
+            
+        # Header CoAP
+        byte0 = data[0]
+        version = (byte0 >> 6) & 0x03
+        msg_type = (byte0 >> 4) & 0x03
+        token_length = byte0 & 0x0F
+        
+        code = data[1]
+        message_id = struct.unpack('!H', data[2:4])[0]
+        
+        # Code CoAP
+        code_class = code >> 5
+        code_detail = code & 0x1F
+        
+        # Skip token
+        offset = 4 + token_length
+        
+        # Parser les options pour trouver l'URI path
+        uri_path = []
+        payload = b''
+        option_number = 0
+        
+        while offset < len(data):
+            if data[offset] == 0xFF:  # Marqueur de fin des options
+                offset += 1
+                if offset < len(data):
+                    payload = data[offset:]
+                break
+                
+            # Parser l'option
+            byte = data[offset]
+            option_delta = (byte >> 4) & 0x0F
+            option_length = byte & 0x0F
+            offset += 1
+            
+            # Gérer les deltas/longueurs étendus (simplifié)
+            if option_delta == 13:
+                option_delta = 13 + data[offset]
+                offset += 1
+            elif option_delta == 14:
+                option_delta = 269 + struct.unpack('!H', data[offset:offset+2])[0]
+                offset += 2
+                
+            if option_length == 13:
+                option_length = 13 + data[offset]
+                offset += 1
+            elif option_length == 14:
+                option_length = 269 + struct.unpack('!H', data[offset:offset+2])[0]
+                offset += 2
+                
+            option_number += option_delta
+            
+            # Extraire la valeur de l'option
+            if offset + option_length <= len(data):
+                option_value = data[offset:offset + option_length]
+                offset += option_length
+                
+                # Option 11 = Uri-Path
+                if option_number == 11:
+                    uri_path.append(option_value.decode('utf-8', errors='ignore'))
+            else:
+                break
+                    
+        return {
+            'version': version,
+            'type': msg_type,
+            'code': f"{code_class}.{code_detail:02d}",
+            'message_id': message_id,
+            'uri_path': '/'.join(uri_path),
+            'payload': payload,
+            'token_length': token_length
+        }
+    
+    def create_coap_response(self, message_id, code=0x45):  # 2.05 Content
+        """Crée une réponse CoAP ACK"""
+        header = struct.pack('!BBH', 
+                            0x60,  # Ver=1, Type=2 (ACK), TKL=0
+                            code,  # 2.05 Content
+                            message_id)
+        return header + b'\xff' + b'ok'  # Payload marker + contenu
+    
+    def create_coap_post_packet(self, uri_path, payload):
+        """Crée un paquet CoAP POST (helper pour éviter les logs)"""
+        message_id = int(time.time()) % 0xFFFF
+        header = struct.pack('!BBH',
+                            0x50,  # Ver=1, Type=NON, TKL=0
+                            0x02,  # Code=POST (0.02)
+                            message_id)
+        
+        # Option Uri-Path
+        uri_bytes = uri_path.encode('utf-8')
+        option_header = bytes([0xB0 + len(uri_bytes)])  # Delta=11
+        
+        # Construire le paquet
+        return header + option_header + uri_bytes + b'\xff' + payload.encode('utf-8')
+    
     def send_coap_post(self, address, uri_path, payload):
-        """
-        ⚠️ DÉSACTIVÉ - Les appels CoAP directs sont interdits!
+        """Envoie un POST CoAP à une adresse"""
+        try:
+            # Créer un nouveau socket pour l'envoi
+            sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
 
-        Cette méthode a été désactivée pour garantir que TOUTES les communications
-        avec les nodes passent par les Border Routers en WebSocket.
+            # Header CoAP POST
+            message_id = int(time.time()) % 0xFFFF
+            header = struct.pack('!BBH',
+                                0x50,  # Ver=1, Type=NON, TKL=0
+                                0x02,  # Code=POST (0.02)
+                                message_id)
 
-        Architecture correcte:
-          Python Server → WebSocket → Border Router → CoAP → Thread Node
+            # Option Uri-Path
+            uri_bytes = uri_path.encode('utf-8')
+            option_header = bytes([0xB0 + len(uri_bytes)])  # Delta=11
 
-        Utilisez plutôt:
-          - send_command_via_br() pour envoyer via Border Router
-          - native_ws_handler.send_command_to_node() pour les commandes
-        """
-        print(f"❌ APPEL CoAP DIRECT BLOQUÉ: {address}/{uri_path} - '{payload}'")
-        print(f"   ⚠️  Utilisez send_command_via_br() ou le Border Router WebSocket!")
-        return False
+            # Construire le paquet
+            packet = header + option_header + uri_bytes + b'\xff' + payload.encode('utf-8')
+
+            # Envoyer
+            sock.sendto(packet, (address, COAP_PORT))
+            print(f"✅ Envoyé '{payload}' à {address}/{uri_path}")
+
+            sock.close()
+            return True
+
+        except Exception as e:
+            print(f"❌ Erreur envoi CoAP: {e}")
+            return False
 
     def send_command_via_br(self, node_name, command_type, payload=None):
         """
@@ -241,7 +406,7 @@ class CoAPServer:
         br_id = border_router_manager.get_br_for_node(node_name)
         if not br_id:
             error_msg = f"Aucun Border Router online ne gère le node {node_name}"
-            print(f"⚠️ {error_msg}")
+            logger.warning(error_msg)
             return False, None, error_msg
 
         # Générer un request_id unique
@@ -260,7 +425,7 @@ class CoAPServer:
             success = native_ws_handler.send_command(br_id, command_data)
 
             if success:
-                print(f"📤 Commande {command_type} envoyée au BR {br_id} pour node {node_name} (request_id: {request_id})")
+                logger.info(f"📤 Commande {command_type} envoyée au BR {br_id} pour node {node_name} (request_id: {request_id})")
 
                 # Incrémenter le compteur de commandes
                 border_router_manager.increment_command_counter(br_id)
@@ -272,7 +437,7 @@ class CoAPServer:
 
         except Exception as e:
             error_msg = f"Erreur envoi commande via BR: {e}"
-            print(error_msg)
+            logger.error(error_msg)
             return False, None, error_msg
 
     def handle_button_event_from_br(self, data):
@@ -286,7 +451,7 @@ class CoAPServer:
         node_name = data.get('node')
         payload = data.get('payload', {})
 
-        print(f"🔘 Événement bouton depuis BR {br_id}, node {node_name}: {payload}")
+        logger.info(f"🔘 Événement bouton depuis BR {br_id}, node {node_name}: {payload}")
 
         # Extraire les informations du payload
         state = payload.get('state', 'pressed')
@@ -304,7 +469,7 @@ class CoAPServer:
 
         # Détecter si c'est un long press (> 2 secondes)
         if duration_ms > 2000:
-            print(f"🔘🔘 BOUTON LONG PRESS détecté (node {node_name}, {duration_ms}ms)")
+            logger.info(f"🔘🔘 BOUTON LONG PRESS détecté (node {node_name}, {duration_ms}ms)")
             event_data['action'] = 'longpress'
 
             # TODO: Implémenter la logique de toggle global des LEDs via WebSocket
@@ -331,7 +496,7 @@ class CoAPServer:
         voltage = payload.get('voltage', 0)
         percentage = payload.get('percentage', 0)
 
-        print(f"🔋 Batterie depuis BR {br_id}, node {node_name}: {voltage}V ({percentage}%)")
+        logger.info(f"🔋 Batterie depuis BR {br_id}, node {node_name}: {voltage}V ({percentage}%)")
 
         # Stocker l'état batterie
         self.battery_status[node_name] = {
@@ -374,7 +539,7 @@ class CoAPServer:
         detection_data = {
             'node': node_name,
             'br_id': br_id,
-            'device': ble_addr,  # Changé de 'ble_addr' à 'device' pour correspondre au JS
+            'ble_addr': ble_addr,
             'rssi': rssi,
             'code': code,
             'timestamp': datetime.now().isoformat()
@@ -907,48 +1072,44 @@ class CoAPServer:
                 
                 # Vérifier si on doit faire une annonce (toutes les 30 secondes)
                 if current_time - last_announce >= announce_interval:
-                    # ⚠️ DÉSACTIVÉ - Les appels CoAP directs sont interdits
-                    print(f"\r[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Annonce serveur DÉSACTIVÉE (CoAP direct bloqué)")
-                    # NOTE: Cette fonctionnalité doit être réimplémentée via Border Router WebSocket
-                    # # Annonce silencieuse
-                    # addresses = self.registry.get_all_addresses()
-                    # if addresses:
-                    #     # Créer un socket temporaire pour l'envoi
-                    #     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-                    #     try:
-                    #         # Flash jaune
-                    #         for addr in addresses:
-                    #             sock.sendto(create_coap_post_packet("led", "yellow:on"), (addr, COAP_PORT))
-                    #         # Envoyer server-id
-                    #         for name, addr in self.registry.nodes.items():
-                    #             packet = create_coap_post_packet("server-id", "server-id")
-                    #             sock.sendto(packet, (addr, COAP_PORT))
-                    #         time.sleep(1)
-                    #         # Éteindre jaune
-                    #         for addr in addresses:
-                    #             sock.sendto(create_coap_post_packet("led", "yellow:off"), (addr, COAP_PORT))
-                    #     finally:
-                    #         sock.close()
+                    print(f"\r[{datetime.now().strftime('%H:%M:%S')}] 📢 Annonce serveur...                    ")
+                    # Annonce silencieuse
+                    addresses = self.registry.get_all_addresses()
+                    if addresses:
+                        # Créer un socket temporaire pour l'envoi
+                        sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+                        try:
+                            # Flash jaune
+                            for addr in addresses:
+                                sock.sendto(self.create_coap_post_packet("led", "yellow:on"), (addr, COAP_PORT))
+                            # Envoyer server-id
+                            for name, addr in self.registry.nodes.items():
+                                packet = self.create_coap_post_packet("server-id", "server-id")
+                                sock.sendto(packet, (addr, COAP_PORT))
+                            time.sleep(1)
+                            # Éteindre jaune
+                            for addr in addresses:
+                                sock.sendto(self.create_coap_post_packet("led", "yellow:off"), (addr, COAP_PORT))
+                        finally:
+                            sock.close()
                     last_announce = current_time
                 
-                # Flash continu des LEDs rouges - ⚠️ DÉSACTIVÉ (CoAP direct bloqué)
-                # NOTE: Cette fonctionnalité doit être réimplémentée via Border Router WebSocket
-                # addresses = self.registry.get_all_addresses()
-                # if addresses:
-                #     # Créer un socket temporaire pour l'envoi
-                #     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-                #     try:
-                #         # Allumer
-                #         for addr in addresses:
-                #             sock.sendto(create_coap_post_packet("led", "red:on"), (addr, COAP_PORT))
-                #         time.sleep(0.5)
-                #         # Éteindre
-                #         for addr in addresses:
-                #             sock.sendto(create_coap_post_packet("led", "red:off"), (addr, COAP_PORT))
-                #         time.sleep(0.5)
-                #     finally:
-                #         sock.close()
-                time.sleep(1.0)  # Attendre au lieu de flasher
+                # Flash continu des LEDs rouges - SILENCIEUX
+                addresses = self.registry.get_all_addresses()
+                if addresses:
+                    # Créer un socket temporaire pour l'envoi
+                    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+                    try:
+                        # Allumer
+                        for addr in addresses:
+                            sock.sendto(self.create_coap_post_packet("led", "red:on"), (addr, COAP_PORT))
+                        time.sleep(0.5)
+                        # Éteindre
+                        for addr in addresses:
+                            sock.sendto(self.create_coap_post_packet("led", "red:off"), (addr, COAP_PORT))
+                        time.sleep(0.5)
+                    finally:
+                        sock.close()
                 
                 # Afficher un indicateur tournant pour montrer que le démo est actif
                 flash_count += 1
@@ -1206,7 +1367,7 @@ class CoAPServer:
                 data, addr = self.sock.recvfrom(4096)
                 
                 # Parser le paquet CoAP
-                packet = parse_coap_packet(data)
+                packet = self.parse_coap_packet(data)
                 
                 if packet:
                     self.event_count += 1
@@ -1262,7 +1423,7 @@ class CoAPServer:
                     
                     # Envoyer ACK si nécessaire
                     if packet['type'] == 0:  # CON (Confirmable)
-                        response = create_coap_response(packet['message_id'])
+                        response = self.create_coap_response(packet['message_id'])
                         self.sock.sendto(response, addr)
                         print("   ← ACK envoyé")
                         
@@ -1770,74 +1931,6 @@ def refresh_topology_background():
         import traceback
         traceback.print_exc()
 
-def scan_all_nodes_via_brs():
-    """
-    Orchestrateur central du scan réseau via Border Routers (découverte dynamique)
-
-    Cette fonction coordonne le scan de tous les nodes du réseau en:
-    1. Récupérant la liste des Border Routers connectés
-    2. Envoyant une commande 'scan_all_nodes' à CHAQUE BR
-    3. Chaque BR découvre automatiquement les nodes dans son réseau Thread
-    4. Les résultats sont reçus de manière asynchrone via WebSocket
-
-    Architecture de découverte dynamique:
-    - Python ne connait PAS la liste des nodes à l'avance
-    - Python ne sait PAS quel node est derrière quel BR
-    - Chaque BR découvre ses propres nodes via OpenThread APIs
-    - Chaque BR scanne ses nodes et renvoie les résultats
-
-    Les résultats sont reçus de manière asynchrone via WebSocket et
-    émis aux clients web via Socket.IO (événement 'scan_node_result')
-
-    Returns:
-        dict: Statistiques du scan (broadcast_sent, br_count)
-    """
-    try:
-        # 1. Récupérer tous les Border Routers connectés
-        active_brs = native_ws_handler.get_active_br_ids()
-
-        if not active_brs:
-            print("⚠️ No Border Routers connected - cannot scan network")
-            return {
-                'broadcast_sent': False,
-                'br_count': 0,
-                'error': 'No Border Routers connected'
-            }
-
-        print(f"🔍 Starting dynamic network scan: broadcasting to {len(active_brs)} Border Router(s)")
-
-        # 2. Envoyer commande scan_all_nodes à TOUS les BRs
-        commands_sent = 0
-        for br_id in active_brs:
-            request_id = str(uuid.uuid4())
-            success = native_ws_handler.send_scan_all_command(
-                br_id=br_id,
-                request_id=request_id
-            )
-
-            if success:
-                commands_sent += 1
-                print(f"✅ scan_all_nodes broadcast to {br_id} (request_id: {request_id})")
-            else:
-                print(f"❌ Failed to send scan_all_nodes to {br_id}")
-
-        print(f"📊 Dynamic scan broadcast complete: {commands_sent}/{len(active_brs)} BRs notified")
-        return {
-            'broadcast_sent': True,
-            'br_count': len(active_brs),
-            'commands_sent': commands_sent
-        }
-
-    except Exception as e:
-        print(f"❌ Error in scan_all_nodes_via_brs: {e}")
-        import traceback
-        traceback.print_exc()
-        return {
-            'broadcast_sent': False,
-            'br_count': 0,
-            'error': str(e)
-        }
-
 # Routes Flask
 @app.route('/')
 def index():
@@ -1880,59 +1973,26 @@ def audio_library_page():
 
 @app.route('/api/topology')
 def get_topology():
-    """Retourne la topologie actuelle du réseau depuis Network Diagnostic"""
-    # Get topology from NetworkTopologyAggregator (Network Diagnostic events)
-    topology = native_ws_handler.get_network_topology()
-
-    # Transform to legacy format for frontend compatibility
-    # Convert NetworkTopologyAggregator format to old topology format
-    nodes = []
-    for node in topology.get('nodes', []):
-        # Get first RLOC16 and ML-EID
-        rloc16 = node['rloc16s'][0] if node['rloc16s'] else 'unknown'
-        ml_eid = node['mleids'][0] if node['mleids'] else None
-
-        # Get business name or use ext_addr short form
-        name = node.get('business_name', f"node_{node['ext_addr'][:8]}")
-
-        # Determine role (use first role or 'unknown')
-        role = node['roles'][0] if node['roles'] else 'unknown'
-
-        nodes.append({
-            'name': name,
-            'address': ml_eid,
-            'rloc16': rloc16,
-            'role': role,
-            'ext_addr': node['ext_addr'],
-            'partition_id': node['partition_id'],
-            'br_ids': node['br_ids'],
-            'is_br': node.get('is_br', False),
-            'last_seen': node['last_seen']
-        })
-
-    # Calculate statistics
-    stats = topology.get('stats', {})
-    total_nodes = stats.get('total_nodes', 0)
-    leaders = sum(1 for n in nodes if 'leader' in n.get('role', ''))
-    routers = sum(1 for n in nodes if 'router' in n.get('role', ''))
-    children = sum(1 for n in nodes if 'child' in n.get('role', ''))
-
-    return jsonify({
-        'network_name': 'Thread Network',
-        'partition_id': nodes[0]['partition_id'] if nodes else None,
-        'last_update': stats.get('timestamp'),
-        'nodes': nodes,
-        'router_links': topology.get('router_links', []),
-        'child_links': topology.get('child_links', []),
-        'statistics': {
-            'total_nodes': total_nodes,
-            'leaders': leaders,
-            'routers': routers,
-            'children': children,
-            'total_router_links': stats.get('total_router_links', 0),
-            'total_child_links': stats.get('total_child_links', 0)
-        }
-    })
+    """Retourne la topologie actuelle du réseau"""
+    with topology_lock:
+        if network_topology_data:
+            return jsonify(network_topology_data)
+        else:
+            # Si pas encore de données, retourner une structure vide
+            return jsonify({
+                'network_name': None,
+                'partition_id': None,
+                'last_update': None,
+                'nodes': [],
+                'statistics': {
+                    'total_nodes': 0,
+                    'leaders': 0,
+                    'routers': 0,
+                    'children': 0,
+                    'max_depth': 0
+                },
+                'hierarchy': {}
+            })
 
 @app.route('/api/refresh_topology', methods=['POST'])
 def refresh_topology():
@@ -1972,61 +2032,7 @@ def get_br_status():
         })
 
     except Exception as e:
-        print(f"Erreur récupération statut BR: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/border_routers')
-def get_border_routers():
-    """
-    Alias pour /api/br/status - compatibilité avec network-map.html
-
-    Returns:
-        JSON avec les statistiques et le statut de chaque BR
-    """
-    return get_br_status()
-
-@app.route('/api/trigger_scan', methods=['POST'])
-def trigger_scan():
-    """
-    Déclenche un scan complet du réseau via les Border Routers
-
-    Cette route lance un scan orchestré de tous les nodes du réseau.
-    Les résultats sont envoyés de manière asynchrone via Socket.IO
-    (événement 'scan_node_result') au fur et à mesure que les nodes
-    répondent.
-
-    Returns:
-        JSON avec le statut du scan et les statistiques
-    """
-    try:
-        print("🔍 API: Triggering network scan via BRs")
-
-        # Lancer le scan orchestré (découverte dynamique)
-        stats = scan_all_nodes_via_brs()
-
-        # Retourner les statistiques (nouveau format)
-        if stats.get('broadcast_sent', False):
-            br_count = stats.get('br_count', 0)
-            commands_sent = stats.get('commands_sent', 0)
-            return jsonify({
-                'success': True,
-                'message': f"Network scan broadcasted to {br_count} Border Router(s)",
-                'statistics': stats
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': stats.get('error', 'No Border Routers connected'),
-                'statistics': stats
-            }), 500
-
-    except Exception as e:
-        print(f"❌ Error triggering scan: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Erreur récupération statut BR: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -2798,12 +2804,12 @@ def handle_br_connect():
     network_prefix = request.args.get('network_prefix', '')
 
     if not br_id or not auth_token:
-        print("❌ Connexion BR refusée: br_id ou auth_token manquant")
+        logger.error("❌ Connexion BR refusée: br_id ou auth_token manquant")
         return False
 
     # Vérifier l'authentification
     if BR_AUTH_ENABLED and not verify_br_token(br_id, auth_token):
-        print(f"❌ Connexion BR refusée: authentification échouée pour {br_id}")
+        logger.error(f"❌ Connexion BR refusée: authentification échouée pour {br_id}")
         return False
 
     # Récupérer la config du BR (nodes associés)
@@ -2831,10 +2837,10 @@ def handle_br_connect():
             'use_websocket_mode': USE_WEBSOCKET_BR
         })
 
-        print(f"✅ Border Router {br_id} connecté via WebSocket (sid: {request.sid})")
+        logger.info(f"✅ Border Router {br_id} connecté via WebSocket (sid: {request.sid})")
         return True
     else:
-        print(f"❌ Échec enregistrement BR {br_id}")
+        logger.error(f"❌ Échec enregistrement BR {br_id}")
         return False
 
 
@@ -2883,7 +2889,7 @@ def handle_node_event(data):
         payload = data.get('payload', {})
 
         if not br_id or not node_name or not event_type:
-            print("Événement node invalide: champs manquants")
+            logger.error("Événement node invalide: champs manquants")
             return
 
         # Incrémenter le compteur d'événements
@@ -2923,7 +2929,7 @@ def handle_node_event(data):
         }, namespace='/')
 
     except Exception as e:
-        print(f"Erreur traitement événement node: {e}")
+        logger.error(f"Erreur traitement événement node: {e}")
 
 
 @socketio.on('command_response', namespace='/ws/br')
@@ -2954,10 +2960,10 @@ def handle_command_response(data):
             'timestamp': time.time()
         }, namespace='/')
 
-        print(f"📨 Réponse commande {request_id}: {status} (node: {node_name}, BR: {br_id})")
+        logger.info(f"📨 Réponse commande {request_id}: {status} (node: {node_name}, BR: {br_id})")
 
     except Exception as e:
-        print(f"Erreur traitement réponse commande: {e}")
+        logger.error(f"Erreur traitement réponse commande: {e}")
 
 
 @socketio.on('topology_update', namespace='/ws/br')
@@ -2979,7 +2985,7 @@ def handle_topology_update(data):
         # Mettre à jour la liste des nodes du BR
         border_router_manager.update_nodes_list(br_id, node_names)
 
-        print(f"🗺️ Topologie mise à jour pour BR {br_id}: {len(node_names)} nodes")
+        logger.info(f"🗺️ Topologie mise à jour pour BR {br_id}: {len(node_names)} nodes")
 
         # Notifier les clients web
         socketio.emit('topology_update', {
@@ -2988,7 +2994,7 @@ def handle_topology_update(data):
         }, namespace='/')
 
     except Exception as e:
-        print(f"Erreur mise à jour topologie: {e}")
+        logger.error(f"Erreur mise à jour topologie: {e}")
 
 
 # ============================================================================

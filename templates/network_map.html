@@ -1,3 +1,4 @@
+{% set page = 'network' %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -331,20 +332,7 @@
 </head>
 <body>
     <div class="container">
-        <!-- Navigation Menu -->
-        <nav class="nav-container">
-            <button class="nav-toggle" onclick="toggleNav()">☰ Menu</button>
-            <div class="nav-wrapper">
-                <ul class="nav-menu" id="navMenu">
-                    <li class="nav-item"><a href="/" class="nav-link"><span class="nav-icon">🏠</span><span>Accueil</span></a></li>
-                    <li class="nav-item"><a href="/audio-control" class="nav-link"><span class="nav-icon">🔊</span><span>Audio PTI</span></a></li>
-                    <li class="nav-item"><a href="/network-map" class="nav-link active"><span class="nav-icon">🌐</span><span>Carte Réseau</span></a></li>
-                    <li class="nav-item"><a href="/beacons" class="nav-link"><span class="nav-icon">📡</span><span>Beacons BLE</span></a></li>
-                    <li class="nav-item"><a href="/ble_debug" class="nav-link"><span class="nav-icon">🔍</span><span>Debug BLE</span></a></li>
-                    <li class="nav-item"><a href="/devices" class="nav-link"><span class="nav-icon">📍</span><span>Devices</span></a></li>
-                </ul>
-            </div>
-        </nav>
+        {% include 'nav_menu.html' %}
 
         <header>
             <h1>🌐 OpenThread Network Map
@@ -801,23 +789,29 @@
                     ? `${node.hop_distance} hop${node.hop_distance > 1 ? 's' : ''}`
                     : '';
 
+                // Ajouter indicateur Border Router si applicable
+                const brIndicator = node.is_br ? '🌐 ' : '';
+
                 if (node.name) {
-                    nodeLabel = hopInfo ? `${node.name}\n${node.role}\n${hopInfo}` : `${node.name}\n${node.role}`;
+                    nodeLabel = hopInfo ? `${brIndicator}${node.name}\n${node.role}\n${hopInfo}` : `${brIndicator}${node.name}\n${node.role}`;
                 } else {
-                    nodeLabel = hopInfo ? `${node.rloc16}\n${node.role}\n${hopInfo}` : `${node.rloc16}\n${node.role}`;
+                    nodeLabel = hopInfo ? `${brIndicator}${node.rloc16}\n${node.role}\n${hopInfo}` : `${brIndicator}${node.rloc16}\n${node.role}`;
                 }
 
+                // Ajouter "Border Router" au tooltip si applicable
+                const brTitle = node.is_br ? '<br><b>🌐 BORDER ROUTER</b>' : '';
                 const tooltipTitle = node.name ?
-                    `<b>${node.name}</b><br>RLOC16: ${node.rloc16}<br>Role: ${node.role}<br>IPv6: ${node.ipv6}${hopInfo ? '<br>Distance: ' + hopInfo : ''}` :
-                    `<b>${node.rloc16}</b><br>Role: ${node.role}<br>IPv6: ${node.ipv6}${hopInfo ? '<br>Distance: ' + hopInfo : ''}`;
+                    `<b>${node.name}</b><br>RLOC16: ${node.rloc16}<br>Role: ${node.role}<br>IPv6: ${node.ipv6}${hopInfo ? '<br>Distance: ' + hopInfo : ''}${brTitle}` :
+                    `<b>${node.rloc16}</b><br>Role: ${node.role}<br>IPv6: ${node.ipv6}${hopInfo ? '<br>Distance: ' + hopInfo : ''}${brTitle}`;
 
                 const nodeConfig = {
                     id: node.rloc16,
                     label: nodeLabel,
                     color: {
-                        background: roleColors[node.role] || '#CCCCCC',
-                        border: '#666666'
+                        background: node.is_br ? '#FFA500' : (roleColors[node.role] || '#CCCCCC'),  // Orange for BR
+                        border: node.is_br ? '#FF8C00' : '#666666'
                     },
+                    borderWidth: node.is_br ? 3 : 2,  // Thicker border for BR
                     title: tooltipTitle
                 };
 
@@ -894,6 +888,57 @@
                             });
                         }
                     });
+                }
+            });
+
+            // Add router links from Network Diagnostic (router↔router with RSSI/LQI)
+            const routerLinks = data.router_links || [];
+            routerLinks.forEach(link => {
+                const edgeId = [link.a_rloc16, link.b_rloc16].sort().join('-');
+                if (!edges.get(edgeId)) {
+                    const rssi = link.avg_rssi || link.last_rssi || -60;
+                    const color = getRssiColor(rssi);
+                    const width = getRssiWidth(rssi);
+                    const quality = getRssiQuality(rssi);
+
+                    edges.add({
+                        id: edgeId,
+                        from: link.a_rloc16,
+                        to: link.b_rloc16,
+                        color: color,
+                        width: width,
+                        title: `Router Link<br>RSSI: ${rssi} dBm (${quality})<br>LQI: ${link.lqi || 'N/A'}`,
+                        dashes: false  // Solid line for router links
+                    });
+                    console.log('🔗 Router link added:', link.a_rloc16, '↔', link.b_rloc16, 'RSSI:', rssi);
+                }
+            });
+
+            // Add child links from Network Diagnostic (parent→child with RSSI)
+            const childLinks = data.child_links || [];
+            childLinks.forEach(link => {
+                const edgeId = `${link.parent_rloc16}-${link.child_rloc16}`;
+                if (!edges.get(edgeId)) {
+                    const rssi = link.avg_rssi || link.last_rssi || -60;
+                    const color = getRssiColor(rssi);
+                    const width = getRssiWidth(rssi);
+                    const quality = getRssiQuality(rssi);
+
+                    edges.add({
+                        id: edgeId,
+                        from: link.parent_rloc16,
+                        to: link.child_rloc16,
+                        color: color,
+                        width: width,
+                        title: `Parent-Child<br>RSSI: ${rssi} dBm (${quality})<br>Mode: ${link.mode || 'N/A'}`,
+                        arrows: {
+                            to: {
+                                enabled: true,
+                                scaleFactor: 0.5
+                            }
+                        }
+                    });
+                    console.log('🔗 Child link added:', link.parent_rloc16, '→', link.child_rloc16, 'RSSI:', rssi);
                 }
             });
 
@@ -1360,6 +1405,18 @@
                 console.log('🔄 Node event detected - refreshing topology');
                 setTimeout(() => loadTopology(), 1000); // Petit délai pour que le serveur traite l'événement
             }
+        });
+
+        // Network Diagnostic: Real-time node discovery
+        socket.on('diagnostic_node', (data) => {
+            console.log('📡 Network Diagnostic: Node discovered',  data.ext_addr, 'role:', data.role, 'BR:', data.br_id);
+
+            // Trigger topology refresh after short delay to aggregate multiple events
+            clearTimeout(window.diagnosticRefreshTimer);
+            window.diagnosticRefreshTimer = setTimeout(() => {
+                console.log('🔄 Refreshing topology after Network Diagnostic events');
+                loadTopology();
+            }, 500);
         });
 
         socket.on('scan_node_result', (data) => {

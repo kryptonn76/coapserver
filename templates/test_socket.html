@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Socket.IO - Basique</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+        }
+        .box {
+            border: 1px solid #0f0;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #111;
+            padding: 10px;
+        }
+        .log div {
+            margin: 5px 0;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .connected { color: #0f0; }
+        .disconnected { color: #f00; }
+        .event { color: #ff0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Socket.IO Basique</h1>
+
+    <div class="box">
+        <h2>Statut: <span id="status" class="disconnected">DÉCONNECTÉ</span></h2>
+    </div>
+
+    <div class="box">
+        <h2>Contrôles</h2>
+        <button onclick="testEmit()">📤 Envoyer test_event</button>
+        <button onclick="clearLogs()">🗑️ Clear logs</button>
+    </div>
+
+    <div class="box">
+        <h2>📋 Console Socket.IO</h2>
+        <div id="logs" class="log"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const logsDiv = document.getElementById('logs');
+        const statusSpan = document.getElementById('status');
+
+        function addLog(message, type = 'normal') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsDiv.insertBefore(div, logsDiv.firstChild);
+            console.log(message);
+        }
+
+        function clearLogs() {
+            logsDiv.innerHTML = '';
+        }
+
+        // Connexion Socket.IO
+        addLog('🔌 Initialisation Socket.IO...', 'event');
+        const socket = io();
+
+        socket.on('connect', () => {
+            statusSpan.textContent = 'CONNECTÉ ✅';
+            statusSpan.className = 'connected';
+            addLog('✅ CONNECTÉ au serveur Socket.IO', 'connected');
+            addLog(`   Session ID: ${socket.id}`, 'connected');
+        });
+
+        socket.on('disconnect', () => {
+            statusSpan.textContent = 'DÉCONNECTÉ ❌';
+            statusSpan.className = 'disconnected';
+            addLog('❌ DÉCONNECTÉ du serveur', 'disconnected');
+        });
+
+        // Écouter test_response du serveur
+        socket.on('test_response', (data) => {
+            addLog(`📥 Reçu test_response: ${JSON.stringify(data)}`, 'event');
+        });
+
+        // Écouter ble_frame (celui qu'on veut vraiment)
+        socket.on('ble_frame', (data) => {
+            addLog(`📡 Reçu ble_frame: ${JSON.stringify(data)}`, 'event');
+        });
+
+        // Écouter ble_beacon
+        socket.on('ble_beacon', (data) => {
+            addLog(`📡 Reçu ble_beacon: ${JSON.stringify(data)}`, 'event');
+        });
+
+        // Écouter TOUS les événements (catch-all)
+        socket.onAny((eventName, ...args) => {
+            addLog(`🔔 Événement reçu: ${eventName} | Data: ${JSON.stringify(args)}`, 'event');
+        });
+
+        function testEmit() {
+            addLog('📤 Envoi test_event au serveur...', 'event');
+            socket.emit('test_event', { message: 'Hello from client', timestamp: Date.now() });
+        }
+
+        // Log initial
+        addLog('🚀 Page chargée, en attente de connexion Socket.IO...');
+    </script>
+</body>
+</html>

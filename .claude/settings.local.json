@@ -10,7 +10,11 @@
       "Bash(python3 -m pip install:*)",
       "Bash(python3:*)",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Read(//Users/lilianbrun/esp2/esp-idf/examples/openthread/ot_cli_lux/main/**)",
+      "Read(//Users/lilianbrun/esp2/esp-thread-br/examples/basic_thread_border_router/**)",
+      "Bash(source:*)",
+      "Bash(idf.py:*)"
     ],
     "deny": [],
     "ask": []

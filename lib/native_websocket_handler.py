@@ -10,13 +10,16 @@ Flask-SocketIO which wraps messages in Socket.IO protocol.
 
 import json
 import time
-import logging
+# logging removed - using print() instead to avoid circular import issues
 import queue
 import threading
 from typing import Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
-logger = logging.getLogger(__name__)
+# logger removed - using print() for all logging
+
+# Import Network Topology Aggregator for Network Diagnostic events
+from lib.network_topology_aggregator import NetworkTopologyAggregator
 
 # Références injectées par server.py (évite l'import circulaire)
 _app = _socketio = _coap = _border_router_manager = _topology_refresh_callback = None
@@ -53,13 +56,14 @@ class NativeWebSocketHandler:
     messages without Socket.IO encapsulation.
     """
 
-    def __init__(self, border_router_manager, br_auth_enabled=True):
+    def __init__(self, border_router_manager, br_auth_enabled=True, mesh_local_prefix="fd00::/8"):
         """
         Initialize the native WebSocket handler
 
         Args:
             border_router_manager: BorderRouterManager instance
             br_auth_enabled: Enable token authentication
+            mesh_local_prefix: Thread Mesh-Local prefix for ML-EID extraction (default: fd00::/8)
         """
         self.border_router_manager = border_router_manager
         self.br_auth_enabled = br_auth_enabled
@@ -67,7 +71,11 @@ class NativeWebSocketHandler:
         self.message_queues: Dict[str, queue.Queue] = {}  # {br_id: Queue()} for thread-safe message sending
         self.tx_threads: Dict[str, threading.Thread] = {}  # {br_id: Thread} dedicated TX threads
         self.ipv6_mapping: Dict[str, Dict] = {}  # {ipv6: {'node_name': str, 'br_id': str, 'last_seen': float}}
-        logger.info("🔧 Native WebSocket handler initialized (TX thread pattern)")
+
+        # Network Topology Aggregator for Network Diagnostic events
+        self.topology_aggregator = NetworkTopologyAggregator(mesh_local_prefix)
+
+        print("🔧 Native WebSocket handler initialized (TX thread pattern + Network Diagnostic)")
 
     def parse_connection_params(self, environ) -> Dict[str, str]:
         """
@@ -101,17 +109,17 @@ class NativeWebSocketHandler:
             True if authentication succeeds
         """
         if not self.br_auth_enabled:
-            logger.debug(f"🔓 Authentication disabled, accepting BR {br_id}")
+            print(f"🔓 Authentication disabled, accepting BR {br_id}")
             return True
 
         # Import here to avoid circular dependency
         from lib.br_auth import verify_br_token
 
         if verify_br_token(br_id, auth_token):
-            logger.info(f"✅ BR {br_id} authenticated successfully")
+            print(f"✅ BR {br_id} authenticated successfully")
             return True
         else:
-            logger.error(f"❌ BR {br_id} authentication failed")
+            print(f"❌ BR {br_id} authentication failed")
             return False
 
     def resolve_ipv6_to_node_name(self, ipv6: str) -> Optional[str]:
@@ -124,7 +132,7 @@ class NativeWebSocketHandler:
         Returns:
             node_name (e.g., "n01") or None if not found
         """
-        logger.debug(f"🔍 Resolving IPv6 → node_name: {ipv6}")
+        print(f"🔍 Resolving IPv6 → node_name: {ipv6}")
 
         try:
             import json
@@ -134,23 +142,23 @@ class NativeWebSocketHandler:
             # Search for matching IPv6 (case-insensitive comparison)
             ipv6_lower = ipv6.lower()
             total_nodes = len(config.get('nodes', {}))
-            logger.debug(f"   📁 Loaded {total_nodes} nodes from config")
+            print(f"   📁 Loaded {total_nodes} nodes from config")
 
             for node_name, node_data in config.get('nodes', {}).items():
                 node_ipv6 = node_data.get('address', '').lower()
                 if node_ipv6 == ipv6_lower:
-                    logger.info(f"   ✅ MATCH: {ipv6} → {node_name}")
+                    print(f"   ✅ MATCH: {ipv6} → {node_name}")
                     return node_name
 
             # Not found in config
-            logger.warning(f"   ❌ NO MATCH: IPv6 {ipv6} not found in adresses.json ({total_nodes} nodes checked)")
+            print(f"   ❌ NO MATCH: IPv6 {ipv6} not found in adresses.json ({total_nodes} nodes checked)")
             return None
 
         except FileNotFoundError:
-            logger.error("❌ config/adresses.json not found")
+            print("❌ config/adresses.json not found")
             return None
         except Exception as e:
-            logger.error(f"❌ Error resolving IPv6: {e}")
+            print(f"❌ Error resolving IPv6: {e}")
             return None
 
     def resolve_node_name_to_ipv6(self, node_name: str) -> Optional[str]:
@@ -172,11 +180,116 @@ class NativeWebSocketHandler:
             if node_data:
                 return node_data.get('address')
 
-            logger.warning(f"⚠️ Node {node_name} not found in adresses.json")
+            print(f"⚠️ Node {node_name} not found in adresses.json")
             return None
 
         except Exception as e:
-            logger.error(f"❌ Error resolving node name: {e}")
+            print(f"❌ Error resolving node name: {e}")
+            return None
+
+    def resolve_extaddr_to_ml_eid(self, ext_addr: str) -> Optional[tuple]:
+        """
+        Resolve Extended Address to ML-EID using config/adresses.json
+
+        The ML-EID's last 64 bits (Interface Identifier) are derived from the Extended Address
+        by flipping the U/L bit (bit 1 of the first byte). This method matches Extended Addresses
+        to ML-EIDs by comparing the IID portion.
+
+        Args:
+            ext_addr: Extended Address as hex string (e.g., "0123456789abcdef")
+
+        Returns:
+            Tuple of (ml_eid, node_name) or None if not found
+        """
+        try:
+            # Remove colons if present and convert to lowercase
+            ext_addr_clean = ext_addr.replace(':', '').lower()
+
+            if len(ext_addr_clean) != 16:
+                print(f"⚠️ Invalid Extended Address length: {ext_addr} (expected 16 hex chars)")
+                return None
+
+            # Convert Extended Address to IID (flip U/L bit - bit 1 of first byte)
+            ext_bytes = bytes.fromhex(ext_addr_clean)
+            iid_bytes = bytearray(ext_bytes)
+            iid_bytes[0] ^= 0x02  # Flip U/L bit
+
+            # Convert IID to lowercase hex string for comparison
+            iid_hex = iid_bytes.hex().lower()
+
+            print(f"🔍 Resolving ExtAddr → ML-EID: {ext_addr}")
+            print(f"   IID (with flipped bit): {iid_hex}")
+
+            # Load addresses from config
+            import json
+            with open('config/adresses.json', 'r', encoding='utf-8') as f:
+                config = json.load(f)
+
+            # Search for matching ML-EID (check if last 64 bits match IID)
+            for node_name, node_data in config.get('nodes', {}).items():
+                ml_eid = node_data.get('address', '').lower()
+
+                # Extract last 64 bits (IID) from ML-EID
+                # ML-EID format: fd78:8e78:3bfe:1:IIII:IIII:IIII:IIII
+                # Remove colons and get last 16 hex chars
+                ml_eid_clean = ml_eid.replace(':', '')
+                if len(ml_eid_clean) >= 32:
+                    ml_eid_iid = ml_eid_clean[-16:]  # Last 64 bits
+
+                    if ml_eid_iid == iid_hex:
+                        print(f"   ✅ MATCH: {ext_addr} → {ml_eid} ({node_name})")
+                        return (ml_eid, node_name)
+
+            print(f"   ❌ NO MATCH: ExtAddr {ext_addr} not found in adresses.json")
+            return None
+
+        except FileNotFoundError:
+            print("❌ config/adresses.json not found")
+            return None
+        except Exception as e:
+            print(f"❌ Error resolving ExtAddr: {e}")
+            import traceback
+            print(traceback.format_exc())
+            return None
+
+    def calculate_linklocal_from_extaddr(self, ext_addr: str) -> Optional[str]:
+        """
+        Calculate link-local IPv6 address from Extended Address (EUI-64)
+
+        Link-local addresses are always reachable for direct neighbors (1-hop).
+        The IID (Interface Identifier) is derived by flipping the U/L bit
+        (bit 1 of the first byte) of the Extended Address.
+
+        Args:
+            ext_addr: Extended Address as hex string (e.g., "0123456789abcdef" or "01:23:45:67:89:ab:cd:ef")
+
+        Returns:
+            Link-local IPv6 address (e.g., "fe80::0323:4567:89ab:cdef") or None if invalid
+        """
+        try:
+            # Remove colons if present and convert to lowercase
+            ext_addr_clean = ext_addr.replace(':', '').lower()
+
+            if len(ext_addr_clean) != 16:
+                print(f"⚠️ Invalid Extended Address length: {ext_addr} (expected 16 hex chars)")
+                return None
+
+            # Convert Extended Address to bytes
+            ext_bytes = bytes.fromhex(ext_addr_clean)
+
+            # Flip U/L bit (bit 1 of first byte) to get IID
+            iid_bytes = bytearray(ext_bytes)
+            iid_bytes[0] ^= 0x02  # Flip U/L bit
+
+            # Build link-local address: fe80::<IID>
+            # Format: fe80::XXXX:XXXX:XXXX:XXXX
+            ll_addr = f"fe80::{iid_bytes[0]:02x}{iid_bytes[1]:02x}:{iid_bytes[2]:02x}{iid_bytes[3]:02x}:{iid_bytes[4]:02x}{iid_bytes[5]:02x}:{iid_bytes[6]:02x}{iid_bytes[7]:02x}"
+
+            print(f"🔗 ExtAddr {ext_addr} → Link-Local {ll_addr}")
+            return ll_addr
+
+        except Exception as e:
+            print(f"❌ Error calculating link-local from ExtAddr {ext_addr}: {e}")
             return None
 
     def update_ipv6_mapping(self, ipv6: str, node_name: str, br_id: str):
@@ -193,7 +306,7 @@ class NativeWebSocketHandler:
             'br_id': br_id,
             'last_seen': time.time()
         }
-        logger.debug(f"📍 Mapping updated: {ipv6} → {node_name} → {br_id}")
+        print(f"📍 Mapping updated: {ipv6} → {node_name} → {br_id}")
 
     def get_br_for_node(self, node_name: str) -> Optional[str]:
         """
@@ -215,7 +328,7 @@ class NativeWebSocketHandler:
         if ipv6 and ipv6 in self.ipv6_mapping:
             return self.ipv6_mapping[ipv6]['br_id']
 
-        logger.warning(f"⚠️ No BR mapping found for node {node_name}")
+        print(f"⚠️ No BR mapping found for node {node_name}")
         return None
 
     def _process_outgoing_queue(self, br_id: str, ws) -> int:
@@ -247,11 +360,11 @@ class NativeWebSocketHandler:
                 message = msg_queue.get_nowait()
                 ws.send(message)
                 sent_count += 1
-                logger.debug(f"📤 Queue: Sent message to BR {br_id} ({msg_queue.qsize()} remaining)")
+                print(f"📤 Queue: Sent message to BR {br_id} ({msg_queue.qsize()} remaining)")
             except queue.Empty:
                 break
             except Exception as e:
-                logger.error(f"❌ Error sending queued message to BR {br_id}: {e}")
+                print(f"❌ Error sending queued message to BR {br_id}: {e}")
 
         return sent_count
 
@@ -270,7 +383,7 @@ class NativeWebSocketHandler:
             br_id: Border Router ID
             ws: WebSocket connection object
         """
-        logger.info(f"📤 TX thread started for BR {br_id}")
+        print(f"📤 TX thread started for BR {br_id}")
 
         try:
             while True:
@@ -279,25 +392,25 @@ class NativeWebSocketHandler:
 
                 # Check for shutdown sentinel
                 if message is None:
-                    logger.info(f"🛑 TX thread received shutdown signal for BR {br_id}")
+                    print(f"🛑 TX thread received shutdown signal for BR {br_id}")
                     break
 
                 # Send message to Border Router
                 try:
                     ws.send(message)
-                    logger.info(f"📤 TX→BR {br_id}: Sent {len(message)} bytes")
-                    logger.debug(f"   Content: {message[:200]}...")  # Log first 200 chars
+                    print(f"📤 TX→BR {br_id}: Sent {len(message)} bytes")
+                    print(f"   Content: {message[:200]}...")  # Log first 200 chars
                 except Exception as e:
-                    logger.error(f"❌ TX thread failed to send to BR {br_id}: {e}")
+                    print(f"❌ TX thread failed to send to BR {br_id}: {e}")
                     # Don't break - try to send remaining messages
                     # The RX thread will handle connection cleanup
 
         except Exception as e:
-            logger.error(f"❌ TX thread crashed for BR {br_id}: {e}")
+            print(f"❌ TX thread crashed for BR {br_id}: {e}")
             import traceback
-            logger.error(traceback.format_exc())
+            print(traceback.format_exc())
 
-        logger.info(f"📤 TX thread stopped for BR {br_id}")
+        print(f"📤 TX thread stopped for BR {br_id}")
 
     def handle_connection(self, ws, environ):
         """
@@ -317,11 +430,11 @@ class NativeWebSocketHandler:
         auth_token = params['auth_token']
         network_prefix = params['network_prefix']
 
-        logger.info(f"📡 New WebSocket connection from BR {br_id}")
+        print(f"📡 New WebSocket connection from BR {br_id}")
 
         # Validate required parameters
         if not br_id or not auth_token:
-            logger.error("❌ Missing br_id or auth_token in connection URL")
+            print("❌ Missing br_id or auth_token in connection URL")
             error_msg = json.dumps({
                 'type': 'error',
                 'message': 'Missing br_id or auth_token'
@@ -331,7 +444,7 @@ class NativeWebSocketHandler:
 
         # Authenticate
         if not self.authenticate_br(br_id, auth_token):
-            logger.error(f"❌ Authentication failed for BR {br_id}")
+            print(f"❌ Authentication failed for BR {br_id}")
             error_msg = json.dumps({
                 'type': 'error',
                 'message': 'Authentication failed'
@@ -354,7 +467,7 @@ class NativeWebSocketHandler:
         )
 
         if not success:
-            logger.error(f"❌ Failed to register BR {br_id}")
+            print(f"❌ Failed to register BR {br_id}")
             error_msg = json.dumps({
                 'type': 'error',
                 'message': 'Failed to register Border Router'
@@ -377,7 +490,7 @@ class NativeWebSocketHandler:
         )
         tx_thread.start()
         self.tx_threads[br_id] = tx_thread
-        logger.info(f"✅ TX thread started for BR {br_id}")
+        print(f"✅ TX thread started for BR {br_id}")
 
         # Send connection confirmation
         connected_msg = json.dumps({
@@ -390,7 +503,7 @@ class NativeWebSocketHandler:
         })
         ws.send(connected_msg)
 
-        logger.info(f"✅ Border Router {br_id} connected and registered")
+        print(f"✅ Border Router {br_id} connected and registered")
 
         # Enter message processing loop (RX only - TX is handled by dedicated thread)
         try:
@@ -400,19 +513,19 @@ class NativeWebSocketHandler:
 
                 if message is None:
                     # Connection closed
-                    logger.info(f"🔌 BR {br_id} closed connection")
+                    print(f"🔌 BR {br_id} closed connection")
                     break
 
                 # Process received message
                 self.handle_message(br_id, message, ws)
 
         except Exception as e:
-            logger.error(f"❌ Error in WebSocket RX loop for BR {br_id}: {e}")
+            print(f"❌ Error in WebSocket RX loop for BR {br_id}: {e}")
 
         finally:
             # Signal TX thread to shutdown (send None sentinel)
             if br_id in self.message_queues:
-                logger.info(f"🛑 Signaling TX thread shutdown for BR {br_id}")
+                print(f"🛑 Signaling TX thread shutdown for BR {br_id}")
                 self.message_queues[br_id].put(None)
 
             # Wait for TX thread to finish (with timeout)
@@ -420,9 +533,9 @@ class NativeWebSocketHandler:
                 tx_thread = self.tx_threads[br_id]
                 tx_thread.join(timeout=2.0)
                 if tx_thread.is_alive():
-                    logger.warning(f"⚠️ TX thread for BR {br_id} did not stop in time")
+                    print(f"⚠️ TX thread for BR {br_id} did not stop in time")
                 else:
-                    logger.info(f"✅ TX thread for BR {br_id} stopped cleanly")
+                    print(f"✅ TX thread for BR {br_id} stopped cleanly")
                 del self.tx_threads[br_id]
 
             # Cleanup: unregister BR and remove from active connections
@@ -431,7 +544,7 @@ class NativeWebSocketHandler:
                 del self.active_connections[br_id]
             if br_id in self.message_queues:
                 del self.message_queues[br_id]
-            logger.warning(f"⚠️ Border Router {br_id} disconnected")
+            print(f"⚠️ Border Router {br_id} disconnected")
 
     def handle_message(self, br_id: str, message: str, ws):
         """
@@ -442,15 +555,23 @@ class NativeWebSocketHandler:
             message: JSON message string
             ws: WebSocket connection object
         """
+        # 🔍 DEBUG: Log raw message received (ultra-verbose for debugging)
+        print(f"🔍 DEBUG: Received raw message from BR {br_id}")
+        print(f"   Length: {len(message)} bytes")
+        print(f"   First 300 chars: {message[:300]}...")
+
         try:
             # Parse JSON
             data = json.loads(message)
             msg_type = data.get('type')
 
-            logger.debug(f"📥 BR {br_id}: {msg_type} ({len(message)} bytes)")
+            # 🔍 DEBUG: Log extracted message type
+            print(f"📥 BR {br_id}: {msg_type} ({len(message)} bytes)")
+            print(f"   🔍 DEBUG: msg_type='{msg_type}' (type={type(msg_type).__name__})")
 
             if not msg_type:
-                logger.error(f"❌ Message from BR {br_id} missing 'type' field")
+                print(f"❌ Message from BR {br_id} missing 'type' field")
+                print(f"   Full message: {message}")
                 return
 
             # Route to appropriate handler
@@ -475,14 +596,32 @@ class NativeWebSocketHandler:
                 # New: Handle scan_node result for topology discovery
                 self.handle_scan_node_result(br_id, data)
 
+            elif msg_type == 'diagnostic_node':
+                # Network Diagnostic: Node discovery via multicast ff03::1
+                print(f"   ✅ DEBUG: Routing to handle_diagnostic_node()")
+                self.handle_diagnostic_node(br_id, data)
+
+            elif msg_type == 'diagnostic_link':
+                # Network Diagnostic: Router↔Router link metrics
+                print(f"   ✅ DEBUG: Routing to handle_diagnostic_link()")
+                self.handle_diagnostic_link(br_id, data)
+
+            elif msg_type == 'diagnostic_child':
+                # Network Diagnostic: Parent↔Child link metrics
+                print(f"   ✅ DEBUG: Routing to handle_diagnostic_child()")
+                self.handle_diagnostic_child(br_id, data)
+
             else:
-                logger.warning(f"⚠️ Unknown message type from BR {br_id}: {msg_type}")
+                print(f"⚠️ Unknown message type from BR {br_id}: {msg_type}")
+                print(f"   Available handlers: heartbeat, node_event, node_discovered, command_response, topology_update, scan_node_result, diagnostic_node, diagnostic_link, diagnostic_child")
 
         except json.JSONDecodeError as e:
-            logger.error(f"❌ Invalid JSON from BR {br_id}: {e}")
-            logger.error(f"📩 Trame complète reçue: {message}")
+            print(f"❌ Invalid JSON from BR {br_id}: {e}")
+            print(f"📩 Trame complète reçue: {message}")
         except Exception as e:
-            logger.error(f"❌ Error processing message from BR {br_id}: {e}")
+            print(f"❌ Error processing message from BR {br_id}: {e}")
+            import traceback
+            print(traceback.format_exc())
 
     def handle_heartbeat(self, br_id: str, data: dict, ws):
         """
@@ -506,7 +645,7 @@ class NativeWebSocketHandler:
         })
         ws.send(ack_msg)
 
-        logger.debug(f"💓 BR {br_id}: {nodes_count} nodes")
+        print(f"💓 BR {br_id}: {nodes_count} nodes")
 
     def handle_node_event_with_ipv6(self, br_id: str, data: dict):
         """
@@ -517,79 +656,79 @@ class NativeWebSocketHandler:
             data: Event data with source_ipv6, event_type, payload
         """
         # 📦 LOG: Extraction des champs
-        logger.error(f"📦 PYTHON: Processing node_event from BR {br_id}")
-        logger.error(f"   Full event data: {json.dumps(data, indent=2)}")
+        print(f"📦 PYTHON: Processing node_event from BR {br_id}")
+        print(f"   Full event data: {json.dumps(data, indent=2)}")
 
         source_ipv6 = data.get('source_ipv6')
         source_rloc = data.get('source_rloc')  # RLOC optionnel pour référence
         event_type = data.get('event_type')
         payload = data.get('payload', {})
 
-        logger.error(f"   🌐 Extracted fields:")
-        logger.error(f"      source_ipv6: {source_ipv6}")
+        print(f"   🌐 Extracted fields:")
+        print(f"      source_ipv6: {source_ipv6}")
         if source_rloc:
-            logger.error(f"      source_rloc: {source_rloc} (for reference)")
-        logger.error(f"      event_type: {event_type}")
-        logger.error(f"      payload: {json.dumps(payload)}")
+            print(f"      source_rloc: {source_rloc} (for reference)")
+        print(f"      event_type: {event_type}")
+        print(f"      payload: {json.dumps(payload)}")
 
         if not source_ipv6 or not event_type:
-            logger.error(f"❌ Invalid node_event from BR {br_id}: missing source_ipv6 or event_type")
+            print(f"❌ Invalid node_event from BR {br_id}: missing source_ipv6 or event_type")
             return
 
         # 🆕 Détecter si c'est un NOUVEAU node (première fois qu'on le voit)
         is_new_node = source_ipv6 not in self.ipv6_mapping
 
         # Resolve IPv6 to node name
-        logger.error(f"   🔍 Resolving IPv6 to node name...")
+        print(f"   🔍 Resolving IPv6 to node name...")
         node_name = self.resolve_ipv6_to_node_name(source_ipv6)
         if not node_name:
-            logger.warning(f"⚠️ Unknown node IPv6: {source_ipv6} (event: {event_type})")
+            print(f"⚠️ Unknown node IPv6: {source_ipv6} (event: {event_type})")
             # Create temporary name for unknown nodes
             node_name = f"unknown-{source_ipv6[-8:]}"
-            logger.error(f"   🏷️  Generated temporary name: {node_name}")
+            print(f"   🏷️  Generated temporary name: {node_name}")
         else:
-            logger.error(f"   ✅ Resolved to known node: {node_name}")
+            print(f"   ✅ Resolved to known node: {node_name}")
 
         # Update IPv6 mapping
         self.update_ipv6_mapping(source_ipv6, node_name, br_id)
-        logger.error(f"   📍 Mapping updated: {source_ipv6} → {node_name} → {br_id}")
+        print(f"   📍 Mapping updated: {source_ipv6} → {node_name} → {br_id}")
 
         # 🆕 Émettre événement Socket.IO si c'est un nouveau node
         if is_new_node and _socketio:
-            logger.error(f"   🎉 NEW NODE DETECTED! Emitting 'node_update' event to web clients")
+            print(f"   🎉 NEW NODE DETECTED! Emitting 'node_update' event to web clients")
             _socketio.emit('node_update', {
                 'node_name': node_name,
                 'ipv6': source_ipv6,
                 'br_id': br_id,
                 'timestamp': time.time()
             }, namespace='/')
-            logger.info(f"✨ New active node: {node_name} ({source_ipv6}) via {br_id}")
+            print(f"✨ New active node: {node_name} ({source_ipv6}) via {br_id}")
 
             # 🔄 Déclencher un scan CoAP en arrière-plan pour enrichir la topologie
             if _topology_refresh_callback:
                 import threading
-                logger.info(f"🔍 Déclenchement scan CoAP pour enrichir topologie...")
+                print(f"🔍 Déclenchement scan CoAP pour enrichir topologie...")
                 thread = threading.Thread(target=_topology_refresh_callback)
                 thread.daemon = True
                 thread.start()
-                logger.info(f"✅ Scan CoAP démarré en arrière-plan")
+                print(f"✅ Scan CoAP démarré en arrière-plan")
 
         # Increment event counter
         self.border_router_manager.increment_event_counter(br_id)
 
         # 🔍 DEBUG: Vérifier si coap_server existe
-        logger.error(f"   🔍 DEBUG: event_type={event_type}, coap_server={'EXISTS' if _coap else 'IS NONE'}")
+        print(f"   🔍 DEBUG: event_type={event_type}, coap_server={'EXISTS' if _coap else 'IS NONE'}")
 
         # Route to appropriate handler based on event type
         if event_type == 'ble_beacon' and _coap:
-            logger.error(f"   ✅ Calling coap_server.handle_ble_event_from_br() with payload: {payload}")
+            print(f"   ✅ Calling coap_server.handle_ble_event_from_br() with payload: {payload}")
             _coap.handle_ble_event_from_br({
                 'node': node_name,
                 'br_id': br_id,
                 'payload': payload  # Passer le payload complet
             })
         elif event_type == 'ble_beacon' and not _coap:
-            logger.error(f"   ❌ CANNOT call handler: coap_server is None!")
+            print(f"   ❌ CANNOT call handler: coap_server is None!")
 
         elif event_type == 'button' and _coap:
             _coap.handle_button_event_from_br({
@@ -617,7 +756,7 @@ class NativeWebSocketHandler:
                 'timestamp': time.time()
             }, namespace='/')
 
-        logger.info(f"📨 Node event from BR {br_id}: {node_name} ({source_ipv6}) - {event_type}")
+        print(f"📨 Node event from BR {br_id}: {node_name} ({source_ipv6}) - {event_type}")
 
     def handle_node_discovered(self, br_id: str, data: dict):
         """
@@ -629,25 +768,25 @@ class NativeWebSocketHandler:
         """
         source_ipv6 = data.get('source_ipv6')
 
-        logger.info(f"🆔 NODE DISCOVERED from BR {br_id}:")
-        logger.info(f"   🌐 Source IPv6: {source_ipv6}")
+        print(f"🆔 NODE DISCOVERED from BR {br_id}:")
+        print(f"   🌐 Source IPv6: {source_ipv6}")
 
         if not source_ipv6:
-            logger.error(f"❌ Invalid node_discovered from BR {br_id}: missing source_ipv6")
+            print(f"❌ Invalid node_discovered from BR {br_id}: missing source_ipv6")
             return
 
         # Resolve IPv6 to node name
         node_name = self.resolve_ipv6_to_node_name(source_ipv6)
         if not node_name:
-            logger.info(f"   ⚠️  Unknown node (not in config)")
+            print(f"   ⚠️  Unknown node (not in config)")
             node_name = f"unknown-{source_ipv6[-8:]}"
-            logger.info(f"   🏷️  Generated temporary name: {node_name}")
+            print(f"   🏷️  Generated temporary name: {node_name}")
         else:
-            logger.info(f"   ✅ Known node: {node_name}")
+            print(f"   ✅ Known node: {node_name}")
 
         # Update mapping
         self.update_ipv6_mapping(source_ipv6, node_name, br_id)
-        logger.info(f"   📍 Mapping registered: {node_name} via BR {br_id}")
+        print(f"   📍 Mapping registered: {node_name} via BR {br_id}")
 
         # Emit to web interface
         if _socketio:
@@ -671,7 +810,7 @@ class NativeWebSocketHandler:
         payload = data.get('payload', {})
 
         if not node_name or not event_type:
-            logger.error(f"❌ Invalid node_event from BR {br_id}: missing node or event_type")
+            print(f"❌ Invalid node_event from BR {br_id}: missing node or event_type")
             return
 
         # Increment event counter
@@ -712,7 +851,7 @@ class NativeWebSocketHandler:
                 'timestamp': time.time()
             }, namespace='/')
 
-        logger.info(f"📨 Node event from BR {br_id}: {node_name} - {event_type}")
+        print(f"📨 Node event from BR {br_id}: {node_name} - {event_type}")
 
     def handle_command_response(self, br_id: str, data: dict):
         """
@@ -729,7 +868,7 @@ class NativeWebSocketHandler:
         error = data.get('error')
 
         if not request_id:
-            logger.error(f"❌ Command response from BR {br_id} missing request_id")
+            print(f"❌ Command response from BR {br_id} missing request_id")
             return
 
         # Notify web clients via Socket.IO
@@ -744,7 +883,7 @@ class NativeWebSocketHandler:
                 'timestamp': time.time()
             }, namespace='/')
 
-        logger.info(f"📨 Command response from BR {br_id}: {request_id} - {status}")
+        print(f"📨 Command response from BR {br_id}: {request_id} - {status}")
 
     def handle_topology_update(self, br_id: str, data: dict):
         """
@@ -762,13 +901,153 @@ class NativeWebSocketHandler:
         # Update nodes list in manager
         self.border_router_manager.update_nodes_list(br_id, node_names)
 
-        logger.info(f"🗺️ Topology update from BR {br_id}: {len(node_names)} nodes")
+        print(f"🗺️ Topology update from BR {br_id}: {len(node_names)} nodes")
 
         # Notify web clients
         if _socketio:
             _socketio.emit('topology_update', {
                 'br_id': br_id,
                 'nodes_count': len(node_names),
+                'timestamp': time.time()
+            }, namespace='/')
+
+    def handle_diagnostic_node(self, br_id: str, data: dict):
+        """
+        Process Network Diagnostic node event from Border Router
+
+        Receives node information from multicast ff03::1 diagnostic queries.
+        Aggregates asynchronously without timeout.
+
+        Args:
+            br_id: Border Router ID
+            data: Node event with keys:
+                  - partition (int): Thread partition ID
+                  - ext_addr (str): Extended Address (EUI-64)
+                  - rloc16 (str): Routing Locator
+                  - role (str): router/reed/child/leader
+                  - ipv6_list (list): All IPv6 addresses
+                  - is_br (bool, optional): True if this node is the Border Router itself
+        """
+        # 🔍 DEBUG: Confirmation that handler is called
+        print(f"🔍 DEBUG: handle_diagnostic_node() CALLED for BR {br_id}")
+        print(f"   Data keys: {list(data.keys())}")
+        print(f"   partition: {data.get('partition')}")
+        print(f"   ext_addr: {data.get('ext_addr')}")
+        print(f"   rloc16: {data.get('rloc16')}")
+        print(f"   role: {data.get('role')}")
+        print(f"   is_br: {data.get('is_br', False)}")
+        print(f"   ipv6_list length: {len(data.get('ipv6_list', []))}")
+
+        # Check if this node is the Border Router itself
+        is_border_router = data.get('is_br', False)
+        if is_border_router:
+            print(f"🌐 Network Diagnostic: BORDER ROUTER self-diagnostic from BR {br_id}")
+        else:
+            print(f"📡 Network Diagnostic: Node from BR {br_id}")
+
+        # Upsert to topology aggregator
+        print(f"   🔄 Calling topology_aggregator.upsert_node()...")
+        self.topology_aggregator.upsert_node(data, br_id)
+
+        # Try to resolve business name from ML-EID
+        mleids = self.topology_aggregator.extract_mleids(data.get('ipv6_list', []))
+        if mleids:
+            # Use first ML-EID for business name lookup
+            ml_eid = mleids[0]
+            node_name = self.resolve_ipv6_to_node_name(ml_eid)
+
+            if node_name:
+                # Update mapping for commands/events
+                self.update_ipv6_mapping(ml_eid, node_name, br_id)
+                if is_border_router:
+                    print(f"   ✅ Border Router enriched: {data.get('ext_addr', '')[:8]}... → {node_name} (BR-{br_id})")
+                else:
+                    print(f"   ✅ Enriched: {data.get('ext_addr', '')[:8]}... → {node_name}")
+
+        # Emit to web clients
+        if _socketio:
+            _socketio.emit('diagnostic_node', {
+                'br_id': br_id,
+                **data,
+                'mleids': mleids,
+                'is_br': is_border_router,
+                'timestamp': time.time()
+            }, namespace='/')
+
+    def handle_diagnostic_link(self, br_id: str, data: dict):
+        """
+        Process Network Diagnostic router link event from Border Router
+
+        Receives router↔router link metrics from meshdiag routerneighbortable.
+
+        Args:
+            br_id: Border Router ID
+            data: Link event with keys:
+                  - a_rloc16 (str): First router RLOC16
+                  - b_rloc16 (str): Second router RLOC16
+                  - avg_rssi (int): Average RSSI
+                  - last_rssi (int): Last RSSI
+                  - lqi (int): Link Quality Indicator
+                  - margin_db (int): Link margin in dB
+                  - frame_err (float): Frame error rate
+                  - msg_err (float): Message error rate
+        """
+        print(f"📶 Network Diagnostic: Router link from BR {br_id}")
+        print(f"   {data.get('a_rloc16')} ↔ {data.get('b_rloc16')} RSSI={data.get('avg_rssi')}")
+
+        # Upsert to topology aggregator
+        self.topology_aggregator.upsert_router_link(data)
+
+        # Emit to web clients
+        if _socketio:
+            _socketio.emit('diagnostic_link', {
+                'br_id': br_id,
+                **data,
+                'timestamp': time.time()
+            }, namespace='/')
+
+    def handle_diagnostic_child(self, br_id: str, data: dict):
+        """
+        Process Network Diagnostic child event from Border Router
+
+        Receives parent↔child link metrics from meshdiag childtable/childip6.
+
+        Args:
+            br_id: Border Router ID
+            data: Child event with keys:
+                  - parent_rloc16 (str): Parent router RLOC16
+                  - child_rloc16 (str): Child RLOC16
+                  - child_ext_addr (str): Child Extended Address
+                  - child_mleids (list): Child ML-EID addresses
+                  - partition (int): Partition ID
+                  - avg_rssi (int): Average RSSI
+                  - last_rssi (int): Last RSSI
+                  - lqi (int): Link Quality
+                  - mode (str): Child mode (rx-on/mtd/sed)
+                  - version (int): Thread version
+        """
+        print(f"👶 Network Diagnostic: Child from BR {br_id}")
+        print(f"   {data.get('parent_rloc16')} → {data.get('child_rloc16')} RSSI={data.get('avg_rssi')}")
+
+        # Upsert to topology aggregator (also creates child node if ext_addr present)
+        self.topology_aggregator.upsert_child_link(data, br_id)
+
+        # Try to resolve child business name from ML-EID
+        child_mleids = data.get('child_mleids', [])
+        if child_mleids:
+            ml_eid = child_mleids[0]
+            node_name = self.resolve_ipv6_to_node_name(ml_eid)
+
+            if node_name:
+                # Update mapping for commands/events
+                self.update_ipv6_mapping(ml_eid, node_name, br_id)
+                print(f"   ✅ Child enriched: {data.get('child_ext_addr', '')[:8]}... → {node_name}")
+
+        # Emit to web clients
+        if _socketio:
+            _socketio.emit('diagnostic_child', {
+                'br_id': br_id,
+                **data,
                 'timestamp': time.time()
             }, namespace='/')
 
@@ -781,30 +1060,126 @@ class NativeWebSocketHandler:
 
         Args:
             br_id: Border Router ID
-            data: Scan result data with target_ipv6, node_name, request_id, success, network_info
+            data: Scan result data with target_ipv6, source_ipv6, source_rloc, node_name, request_id, success, network_info
         """
-        target_ipv6 = data.get('target_ipv6')
-        node_name = data.get('node_name')
+        target_ipv6 = data.get('target_ipv6')  # Address used to scan (may be RLOC)
+        source_ipv6 = data.get('source_ipv6')  # Node's ML-EID (from network_info)
+        source_rloc = data.get('source_rloc')  # Node's RLOC (constructed by BR)
+        node_name_br = data.get('node_name')   # Generic name from BR (e.g., "node_c001")
         request_id = data.get('request_id')
         success = data.get('success', False)
         network_info = data.get('network_info', {})
         error = data.get('error')
 
         if not success:
-            logger.warning(f"❌ Scan {node_name}: {error}")
+            print(f"❌ Scan {node_name_br}: {error}")
             return
+
+        # Use source_ipv6 (ML-EID) for enrichment - this is the stable address
+        print(f"   📍 Node ML-EID: {source_ipv6}")
+        if source_rloc:
+            print(f"   📍 Node RLOC: {source_rloc}")
+
+        # Enrich with business name from adresses.json using source_ipv6 (ML-EID)
+        node_name_business = self.resolve_ipv6_to_node_name(source_ipv6)
+
+        if node_name_business:
+            # Found in config - use business name
+            print(f"✅ Enriched: {node_name_br} → {node_name_business} (from adresses.json)")
+            node_name = node_name_business
+            # Update mapping with ML-EID
+            self.update_ipv6_mapping(source_ipv6, node_name_business, br_id)
+        else:
+            # Not in config - keep BR's generic name
+            print(f"⚠️ Not in config: {node_name_br} ML-EID={source_ipv6} - keeping generic name")
+            node_name = node_name_br
 
         # Log success concisely
         role = network_info.get('role', 'unknown')
         rloc = network_info.get('rloc16', '?')
-        neighbors = len(network_info.get('neighbors', []))
-        logger.info(f"✅ Scan {node_name}: {role} ({rloc}) - {neighbors} neighbors")
+        children = network_info.get('children', [])
+        neighbors = network_info.get('neighbors', [])
+        print(f"✅ Scan {node_name}: {role} ({rloc}) - {len(children)} children, {len(neighbors)} neighbors")
 
-        # Emit to web clients
+        # Discover and scan children/neighbors using LINK-LOCAL addresses
+        # Link-local addresses (fe80::<IID>) are always reachable for direct neighbors (1-hop)
+        # This is more reliable than RLOC which may not be routable yet
+        discovered_nodes = []
+
+        print(f"   🔍 Starting recursive neighbor discovery via link-local addresses")
+
+        # Process children (if this node is a router/leader)
+        for child in children:
+            rloc16 = child.get('rloc16', '')
+            ext_addr = child.get('ext_addr', '')
+
+            if ext_addr:
+                # Calculate link-local address from Extended Address
+                link_local = self.calculate_linklocal_from_extaddr(ext_addr)
+
+                if link_local:
+                    discovered_nodes.append({
+                        'ipv6': link_local,
+                        'rloc16': rloc16,
+                        'ext_addr': ext_addr,
+                        'type': 'child',
+                        'discovery_method': 'link-local'
+                    })
+                    print(f"   🔍 Discovered child: ExtAddr={ext_addr} → Link-Local {link_local}")
+                else:
+                    print(f"   ⚠️ Failed to calculate link-local for child ExtAddr={ext_addr}")
+
+        # Process neighbors (other routers)
+        for neighbor in neighbors:
+            # Skip if neighbor is marked as a child (already processed above)
+            if neighbor.get('is_child', False):
+                continue
+
+            rloc16 = neighbor.get('rloc16', '')
+            ext_addr = neighbor.get('ext_addr', '')
+
+            if ext_addr:
+                # Calculate link-local address from Extended Address
+                link_local = self.calculate_linklocal_from_extaddr(ext_addr)
+
+                if link_local:
+                    discovered_nodes.append({
+                        'ipv6': link_local,
+                        'rloc16': rloc16,
+                        'ext_addr': ext_addr,
+                        'type': 'neighbor',
+                        'discovery_method': 'link-local'
+                    })
+                    print(f"   🔍 Discovered neighbor: ExtAddr={ext_addr} → Link-Local {link_local}")
+                else:
+                    print(f"   ⚠️ Failed to calculate link-local for neighbor ExtAddr={ext_addr}")
+
+        # Initiate scans for discovered nodes using LINK-LOCAL addresses
+        if discovered_nodes:
+            print(f"   📡 Initiating scans for {len(discovered_nodes)} discovered nodes via link-local...")
+            import uuid
+            for node_info in discovered_nodes:
+                scan_request_id = str(uuid.uuid4())
+                # Use generic name for now (will be enriched after scan with ml_eid)
+                node_name_temp = f"node_{node_info['rloc16'].replace('0x', '')}"
+
+                success = self.send_scan_node_command(
+                    br_id=br_id,
+                    target_ipv6=node_info['ipv6'],  # Use link-local address
+                    node_name=node_name_temp,
+                    request_id=scan_request_id
+                )
+                if success:
+                    print(f"      ✅ Scan queued: {node_name_temp} via {node_info['discovery_method']} {node_info['ipv6']} ({node_info['type']})")
+                else:
+                    print(f"      ❌ Failed to queue scan: {node_name_temp}")
+
+        # Emit to web clients (with enriched business name)
         if _socketio:
             _socketio.emit('scan_node_result', {
                 'br_id': br_id,
-                'node_name': node_name,
+                'node_name': node_name,  # Business name (n01, n02) or generic (node_c001)
+                'node_name_br': node_name_br,  # Original BR name for reference
                 'target_ipv6': target_ipv6,
                 'request_id': request_id,
                 'success': success,
@@ -824,7 +1199,7 @@ class NativeWebSocketHandler:
             True if command was sent successfully
         """
         if br_id not in self.active_connections:
-            logger.error(f"❌ Cannot send command to BR {br_id}: not connected")
+            print(f"❌ Cannot send command to BR {br_id}: not connected")
             return False
 
         ws = self.active_connections[br_id]
@@ -838,11 +1213,11 @@ class NativeWebSocketHandler:
             message = json.dumps(command_data)
             ws.send(message)
 
-            logger.debug(f"📤 Command sent to BR {br_id}: {command_data.get('command')}")
+            print(f"📤 Command sent to BR {br_id}: {command_data.get('command')}")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Error sending command to BR {br_id}: {e}")
+            print(f"❌ Error sending command to BR {br_id}: {e}")
             return False
 
     def send_command_to_node(self, node_name: str, command_type: str, payload: str) -> bool:
@@ -860,18 +1235,18 @@ class NativeWebSocketHandler:
         # Resolve node name to IPv6
         ipv6 = self.resolve_node_name_to_ipv6(node_name)
         if not ipv6:
-            logger.error(f"❌ Cannot resolve node {node_name} to IPv6")
+            print(f"❌ Cannot resolve node {node_name} to IPv6")
             return False
 
         # Find which BR manages this node
         br_id = self.get_br_for_node(node_name)
         if not br_id:
-            logger.error(f"❌ No BR mapping for {node_name} ({ipv6})")
+            print(f"❌ No BR mapping for {node_name} ({ipv6})")
             return False
 
         # Check if BR is connected
         if br_id not in self.active_connections:
-            logger.error(f"❌ BR {br_id} not connected")
+            print(f"❌ BR {br_id} not connected")
             return False
 
         # Build command message for BR
@@ -889,10 +1264,10 @@ class NativeWebSocketHandler:
             ws = self.active_connections[br_id]
             message = json.dumps(command_msg)
             ws.send(message)
-            logger.info(f"📤 Command sent to {node_name} ({ipv6}) via {br_id}: {command_type} - {payload}")
+            print(f"📤 Command sent to {node_name} ({ipv6}) via {br_id}: {command_type} - {payload}")
             return True
         except Exception as e:
-            logger.error(f"❌ Failed to send command: {e}")
+            print(f"❌ Failed to send command: {e}")
             return False
 
     def send_scan_node_command(self, br_id: str, target_ipv6: str, node_name: str, request_id: str) -> bool:
@@ -913,12 +1288,12 @@ class NativeWebSocketHandler:
         """
         # Check if BR is connected
         if br_id not in self.active_connections:
-            logger.error(f"❌ BR {br_id} not connected (available: {list(self.active_connections.keys())})")
+            print(f"❌ BR {br_id} not connected (available: {list(self.active_connections.keys())})")
             return False
 
         # Check if queue exists
         if br_id not in self.message_queues:
-            logger.error(f"❌ No message queue for BR {br_id}")
+            print(f"❌ No message queue for BR {br_id}")
             return False
 
         # Build scan_node command message
@@ -935,12 +1310,56 @@ class NativeWebSocketHandler:
             message = json.dumps(scan_msg)
             msg_queue = self.message_queues[br_id]
             msg_queue.put(message)
-            logger.info(f"🔍 Scan enqueued: {node_name} → {target_ipv6} via BR {br_id}")
+            print(f"🔍 Scan enqueued: {node_name} → {target_ipv6} via BR {br_id}")
             return True
         except Exception as e:
-            logger.error(f"❌ Failed to enqueue scan for {node_name}: {e}")
+            print(f"❌ Failed to enqueue scan for {node_name}: {e}")
             import traceback
-            logger.error(traceback.format_exc())
+            print(traceback.format_exc())
+            return False
+
+    def send_scan_all_command(self, br_id: str, request_id: str) -> bool:
+        """
+        Send scan_all_nodes command to Border Router for dynamic network discovery
+
+        This method asks the BR to discover all nodes in its Thread network and scan each one.
+        The BR will iterate through its children and neighbors, get their IPv6 addresses,
+        and scan each node automatically.
+
+        Args:
+            br_id: Border Router ID
+            request_id: Unique request identifier for tracking
+
+        Returns:
+            True if command was enqueued successfully
+        """
+        # Check if BR is connected
+        if br_id not in self.active_connections:
+            print(f"❌ BR {br_id} not connected (available: {list(self.active_connections.keys())})")
+            return False
+
+        # Check if queue exists
+        if br_id not in self.message_queues:
+            print(f"❌ No message queue for BR {br_id}")
+            return False
+
+        # Build scan_all_nodes command message
+        scan_msg = {
+            'command': 'scan_all_nodes',
+            'request_id': request_id
+        }
+
+        # Enqueue message for thread-safe sending
+        try:
+            message = json.dumps(scan_msg)
+            msg_queue = self.message_queues[br_id]
+            msg_queue.put(message)
+            print(f"🔍 Scan all nodes enqueued for BR {br_id} (request_id: {request_id})")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to enqueue scan_all for BR {br_id}: {e}")
+            import traceback
+            print(traceback.format_exc())
             return False
 
     def is_br_connected(self, br_id: str) -> bool:
@@ -998,5 +1417,26 @@ class NativeWebSocketHandler:
                     'seconds_ago': int(time_since_last_seen)
                 })
 
-        logger.debug(f"🔍 Active nodes: {len(active_nodes)}/{len(self.ipv6_mapping)} (timeout: {timeout_seconds}s)")
+        print(f"🔍 Active nodes: {len(active_nodes)}/{len(self.ipv6_mapping)} (timeout: {timeout_seconds}s)")
         return active_nodes
+
+    def get_network_topology(self) -> dict:
+        """
+        Get aggregated network topology from Network Diagnostic events
+
+        Returns:
+            Dictionary with nodes, router_links, child_links, and stats
+            Enriched with business names from adresses.json where available
+        """
+        topology = self.topology_aggregator.get_topology()
+
+        # Enrich nodes with business names
+        for node in topology['nodes']:
+            if node['mleids']:
+                # Try to resolve business name from first ML-EID
+                ml_eid = node['mleids'][0]
+                business_name = self.resolve_ipv6_to_node_name(ml_eid)
+                if business_name:
+                    node['business_name'] = business_name
+
+        return topology

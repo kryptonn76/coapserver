@@ -1,7 +1,7 @@
 {
   "border_routers": {
     "BR-001": {
-      "auth_token": "change-this-secret-token-br001-production",
+      "auth_token": "dev-token-for-testing-only",
       "network_prefix": "fd78:8e78:3bfe:1::/64",
       "location": "Bâtiment A - Étage 1",
       "nodes": ["n01", "n02", "n03", "n04", "n05", "n06", "n07"]

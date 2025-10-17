@@ -1,0 +1,52 @@
+<!-- Navigation Menu Template -->
+<nav class="nav-container">
+    <button class="nav-toggle" onclick="toggleNav()">☰ Menu</button>
+    <div class="nav-wrapper">
+        <ul class="nav-menu" id="navMenu">
+            <li class="nav-item">
+                <a href="/" class="nav-link {% if page == 'index' %}active{% endif %}">
+                    <span class="nav-icon">🏠</span>
+                    <span>Accueil</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/audio-control" class="nav-link {% if page == 'audio' %}active{% endif %}">
+                    <span class="nav-icon">🔊</span>
+                    <span>Audio PTI</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/network-map" class="nav-link {% if page == 'network' %}active{% endif %}">
+                    <span class="nav-icon">🌐</span>
+                    <span>Carte Réseau</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/beacons" class="nav-link {% if page == 'beacons' %}active{% endif %}">
+                    <span class="nav-icon">📡</span>
+                    <span>Beacons BLE</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/ble_debug" class="nav-link {% if page == 'ble_debug' %}active{% endif %}">
+                    <span class="nav-icon">🔍</span>
+                    <span>Debug BLE</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/devices" class="nav-link {% if page == 'devices' %}active{% endif %}">
+                    <span class="nav-icon">📍</span>
+                    <span>Devices</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<script>
+// Toggle navigation menu for mobile
+function toggleNav() {
+    const navMenu = document.getElementById('navMenu');
+    navMenu.classList.toggle('active');
+}
+</script>
