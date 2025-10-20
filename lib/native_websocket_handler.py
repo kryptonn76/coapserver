@@ -742,6 +742,36 @@ class NativeWebSocketHandler:
         """
         nodes_count = data.get('nodes_count', 0)
 
+        # Auto-register BR on first heartbeat if not already registered
+        if br_id not in self.active_connections:
+            print(f"📝 Auto-registering BR {br_id} from heartbeat")
+            self.active_connections[br_id] = ws
+
+            # Create message queue if doesn't exist
+            if br_id not in self.message_queues:
+                self.message_queues[br_id] = queue.Queue()
+
+                # Start dedicated TX thread for sending messages
+                tx_thread = threading.Thread(
+                    target=self._tx_thread_worker,
+                    args=(br_id, ws),
+                    name=f"TX-{br_id}",
+                    daemon=True
+                )
+                tx_thread.start()
+                self.tx_threads[br_id] = tx_thread
+                print(f"✅ TX thread started for BR {br_id} (late registration)")
+
+            # Register in border router manager if not already done
+            if not self.border_router_manager.is_br_registered(br_id):
+                self.border_router_manager.register_br(
+                    br_id=br_id,
+                    sid=br_id,
+                    network_prefix=data.get('network_prefix', 'fd78:8e78:3bfe:1::/64'),
+                    nodes=[]
+                )
+                print(f"✅ BR {br_id} registered in manager (auto-registration)")
+
         # Update heartbeat in manager
         self.border_router_manager.update_heartbeat(br_id, nodes_count)
 
@@ -752,6 +782,13 @@ class NativeWebSocketHandler:
             'server_status': 'ok'
         })
         ws.send(ack_msg)
+
+        # Refresh gateway timestamp to keep it online while BR is connected
+        # Gateway is the BR itself and doesn't send CoAP events, so we update its last_seen on each heartbeat
+        for ipv6, mapping in self.ipv6_mapping.items():
+            if mapping['node_name'] == 'gateway' and mapping['br_id'] == br_id:
+                mapping['last_seen'] = time.time()
+                break
 
         print(f"💓 BR {br_id}: {nodes_count} nodes")
 
