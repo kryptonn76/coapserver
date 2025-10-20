@@ -662,6 +662,133 @@ h1 {
     animation: pulse 1s ease infinite;
 }
 
+/* LED Driver Control (FemtoBuck AL8805W5) */
+.led-driver-control {
+    margin-top: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.led-driver-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.led-driver-header span {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.btn-led-driver-toggle {
+    padding: 6px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    min-width: 60px;
+    text-align: center;
+}
+
+.btn-led-driver-toggle:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.btn-led-driver-toggle.active {
+    background: linear-gradient(135deg, #FFC107, #FF9800);
+    color: #1a1a2e;
+    border-color: #FFC107;
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+}
+
+.led-driver-slider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.intensity-slider {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.intensity-slider:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.intensity-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FFC107, #FF9800);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+    transition: all 0.2s ease;
+}
+
+.intensity-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 2px 12px rgba(255, 193, 7, 0.6);
+}
+
+.intensity-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FFC107, #FF9800);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+    transition: all 0.2s ease;
+}
+
+.intensity-slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 2px 12px rgba(255, 193, 7, 0.6);
+}
+
+.intensity-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.5));
+}
+
+.intensity-slider::-moz-range-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.5));
+}
+
+.intensity-value {
+    min-width: 48px;
+    font-size: 0.9rem;
+    color: #FFC107;
+    font-weight: 600;
+    text-align: right;
+}
+
 /* Dernière activité */
 .last-activity {
     display: flex;

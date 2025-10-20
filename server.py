@@ -196,6 +196,7 @@ class CoAPServer:
             on_location_change=self.handle_location_change
         )  # Client ThingsBoard avec callbacks
         self.led_states = {}  # État des LEDs par node
+        self.led_driver_states = {}  # État du LED driver (FemtoBuck) par node: {node_name: {'intensity': int}}
         self.button_events = deque(maxlen=100)  # Historique des événements boutons
         self.node_status = {}  # État général des nodes
         self.tracking_mode = False  # Mode suivi de position
@@ -2180,6 +2181,10 @@ def get_nodes():
             # Récupérer l'état des LEDs
             led_states = coap_server.led_states.get(active_info['ipv6'], {}) if coap_server else {}
 
+            # Récupérer l'état du LED driver
+            led_driver = coap_server.led_driver_states.get(name, {}) if coap_server else {}
+            led_driver_intensity = led_driver.get('intensity', 0)
+
             nodes_data.append({
                 'name': name,
                 'address': ipv6,
@@ -2191,6 +2196,10 @@ def get_nodes():
                 'leds': {
                     'red': led_states.get('red', False),
                     'light': led_states.get('light', False)
+                },
+                'led_driver': {
+                    'intensity': led_driver_intensity,
+                    'state': led_driver_intensity > 0
                 },
                 'online': True
             })
@@ -2209,6 +2218,10 @@ def get_nodes():
                 'leds': {
                     'red': False,
                     'light': False
+                },
+                'led_driver': {
+                    'intensity': 0,
+                    'state': False
                 },
                 'online': False
             })
@@ -2259,30 +2272,20 @@ def send_command():
     if command_type == 'led':
         led = data.get('led')  # red, light, all
         action = data.get('action')  # on, off
-        
+
         if target == 'all':
-            addresses = coap_server.registry.get_all_addresses()
-            for addr in addresses:
-                coap_server.send_coap_post(addr, "led", f"{led}:{action}")
-                # Mettre à jour l'état local
-                if addr not in coap_server.led_states:
-                    coap_server.led_states[addr] = {}
-                if led == 'all':
-                    coap_server.led_states[addr]['red'] = (action == 'on')
-                    coap_server.led_states[addr]['light'] = (action == 'on')
-                else:
-                    coap_server.led_states[addr][led] = (action == 'on')
-        else:
-            # Envoyer à un node spécifique
-            if target in coap_server.registry.nodes:
-                node_data = coap_server.registry.nodes[target]
-                if isinstance(node_data, dict):
-                    addr = node_data.get('address')
-                else:
-                    addr = node_data
-                
-                if addr:
-                    coap_server.send_coap_post(addr, "led", f"{led}:{action}")
+            # Envoyer à tous les nodes via WebSocket BR
+            for node_name in coap_server.registry.nodes.keys():
+                success = native_ws_handler.send_command_to_node(
+                    node_name,
+                    'led',
+                    f"{led}:{action}"
+                )
+
+                if success:
+                    node_data = coap_server.registry.nodes[node_name]
+                    addr = node_data.get('address') if isinstance(node_data, dict) else node_data
+
                     # Mettre à jour l'état local
                     if addr not in coap_server.led_states:
                         coap_server.led_states[addr] = {}
@@ -2291,12 +2294,87 @@ def send_command():
                         coap_server.led_states[addr]['light'] = (action == 'on')
                     else:
                         coap_server.led_states[addr][led] = (action == 'on')
-                    
-                    # Émettre la mise à jour via WebSocket
-                    socketio.emit('led_update', {
+        else:
+            # Envoyer à un node spécifique via WebSocket BR
+            if target in coap_server.registry.nodes:
+                success = native_ws_handler.send_command_to_node(
+                    target,
+                    'led',
+                    f"{led}:{action}"
+                )
+
+                if success:
+                    node_data = coap_server.registry.nodes[target]
+                    addr = node_data.get('address') if isinstance(node_data, dict) else node_data
+
+                    if addr:
+                        # Mettre à jour l'état local
+                        if addr not in coap_server.led_states:
+                            coap_server.led_states[addr] = {}
+                        if led == 'all':
+                            coap_server.led_states[addr]['red'] = (action == 'on')
+                            coap_server.led_states[addr]['light'] = (action == 'on')
+                        else:
+                            coap_server.led_states[addr][led] = (action == 'on')
+
+                        # Émettre la mise à jour via WebSocket
+                        socketio.emit('led_update', {
+                            'node': target,
+                            'led': led,
+                            'state': action == 'on'
+                        })
+
+    elif command_type == 'led_driver':
+        # Format: {"type": "led_driver", "target": "n01", "action": "on|off|set", "intensity": 50}
+        action = data.get('action')  # "on", "off", "set"
+        intensity = data.get('intensity', 50)  # 10-100%
+
+        # Valider intensité
+        if intensity < 10:
+            intensity = 10
+        elif intensity > 100:
+            intensity = 100
+
+        # Construire payload CoAP
+        if action == 'off':
+            payload = "intensity:0"
+        else:
+            payload = f"intensity:{intensity}"
+
+        if target == 'all':
+            # Envoyer à tous les nodes via WebSocket BR
+            for node_name in coap_server.registry.nodes.keys():
+                success = native_ws_handler.send_command_to_node(
+                    node_name,
+                    'led/driver',
+                    payload
+                )
+
+                if success:
+                    # Mettre à jour état local
+                    if node_name not in coap_server.led_driver_states:
+                        coap_server.led_driver_states[node_name] = {}
+                    coap_server.led_driver_states[node_name]['intensity'] = intensity if action != 'off' else 0
+        else:
+            # Envoyer à un node spécifique via WebSocket BR
+            if target in coap_server.registry.nodes:
+                success = native_ws_handler.send_command_to_node(
+                    target,
+                    'led/driver',
+                    payload
+                )
+
+                if success:
+                    # Mettre à jour état local
+                    if target not in coap_server.led_driver_states:
+                        coap_server.led_driver_states[target] = {}
+                    coap_server.led_driver_states[target]['intensity'] = intensity if action != 'off' else 0
+
+                    # Notifier frontend via WebSocket
+                    socketio.emit('led_driver_update', {
                         'node': target,
-                        'led': led,
-                        'state': action == 'on'
+                        'intensity': intensity if action != 'off' else 0,
+                        'state': action != 'off'
                     })
     
     elif command_type == 'tracking_mode':

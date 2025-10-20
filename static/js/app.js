@@ -192,7 +192,28 @@ function updateNodeCard(card, nodeData) {
             }
         }
     });
-    
+
+    // LED Driver
+    if (nodeData.led_driver) {
+        const driverButton = card.querySelector('.btn-led-driver-toggle');
+        const driverSlider = card.querySelector('.intensity-slider');
+        const driverValue = card.querySelector('.intensity-value');
+
+        if (driverButton && driverSlider && driverValue) {
+            if (nodeData.led_driver.state) {
+                driverButton.textContent = 'ON';
+                driverButton.classList.add('active');
+                driverSlider.disabled = false;
+                driverSlider.value = nodeData.led_driver.intensity;
+                driverValue.textContent = `${nodeData.led_driver.intensity}%`;
+            } else {
+                driverButton.textContent = 'OFF';
+                driverButton.classList.remove('active');
+                driverSlider.disabled = true;
+            }
+        }
+    }
+
     // Adresse IPv6
     const addressDiv = card.querySelector('.node-address');
     addressDiv.textContent = nodeData.address;
@@ -374,7 +395,7 @@ function setupSocketHandlers() {
     
     socket.on('led_update', function(data) {
         console.log('Mise à jour LED:', data);
-        
+
         // Mettre à jour l'état visuel de la LED
         const card = document.querySelector(`[data-node-name="${data.node}"]`);
         if (card) {
@@ -388,7 +409,32 @@ function setupSocketHandlers() {
             }
         }
     });
-    
+
+    socket.on('led_driver_update', function(data) {
+        console.log('Mise à jour LED driver:', data);
+
+        const card = document.querySelector(`[data-node-name="${data.node}"]`);
+        if (card) {
+            const button = card.querySelector('.btn-led-driver-toggle');
+            const slider = card.querySelector('.intensity-slider');
+            const valueLabel = card.querySelector('.intensity-value');
+
+            if (button && slider && valueLabel) {
+                if (data.state && data.intensity > 0) {
+                    button.textContent = 'ON';
+                    button.classList.add('active');
+                    slider.disabled = false;
+                    slider.value = data.intensity;
+                    valueLabel.textContent = `${data.intensity}%`;
+                } else {
+                    button.textContent = 'OFF';
+                    button.classList.remove('active');
+                    slider.disabled = true;
+                }
+            }
+        }
+    });
+
     socket.on('demo_status', function(data) {
         demoActive = data.active;
         const indicator = document.getElementById('demo-indicator');
@@ -476,10 +522,60 @@ function toggleLED(button, ledColor) {
     const nodeName = card.dataset.nodeName;
     const led = card.querySelector(`.led-${ledColor}`);
     const isOn = led.classList.contains('on');
-    
+
     sendCommand('led', nodeName, {
         led: ledColor,
         action: isOn ? 'off' : 'on'
+    });
+}
+
+// Toggle LED driver ON/OFF
+function toggleLEDDriver(button) {
+    const card = button.closest('.node-card');
+    const nodeName = card.dataset.nodeName;
+    const slider = card.querySelector('.intensity-slider');
+    const intensity = parseInt(slider.value);
+
+    if (button.textContent.trim() === 'OFF') {
+        // Allumer avec intensité du slider (300ms fade automatique)
+        sendCommand('led_driver', nodeName, {
+            action: 'on',
+            intensity: intensity
+        });
+        button.textContent = 'ON';
+        button.classList.add('active');
+        slider.disabled = false;
+    } else {
+        // Éteindre (fade vers 0 sur 300ms)
+        sendCommand('led_driver', nodeName, {
+            action: 'off'
+        });
+        button.textContent = 'OFF';
+        button.classList.remove('active');
+        slider.disabled = true;
+    }
+}
+
+// Mise à jour visuelle immédiate du slider (sans envoyer commande)
+function updateLEDDriverIntensity(slider) {
+    const card = slider.closest('.node-card');
+    const valueLabel = card.querySelector('.intensity-value');
+    const intensity = parseInt(slider.value);
+
+    valueLabel.textContent = `${intensity}%`;
+}
+
+// Envoyer commande LED driver quand slider relâché (onchange)
+function setLEDDriverIntensity(slider) {
+    const card = slider.closest('.node-card');
+    const nodeName = card.dataset.nodeName;
+    const intensity = parseInt(slider.value);
+
+    console.log(`Setting LED driver intensity: ${nodeName} → ${intensity}% (300ms fade)`);
+
+    sendCommand('led_driver', nodeName, {
+        action: 'set',
+        intensity: intensity
     });
 }
 

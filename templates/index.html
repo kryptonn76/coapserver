@@ -166,7 +166,25 @@
                         <button class="btn-led" onclick="toggleLED(this, 'light')">Externe</button>
                     </div>
                 </div>
-                
+
+                <!-- LED Driver Control (FemtoBuck) -->
+                <div class="led-driver-control">
+                    <div class="led-driver-header">
+                        <span>💡 Éclairage</span>
+                        <button class="btn-led-driver-toggle" onclick="toggleLEDDriver(this)">
+                            OFF
+                        </button>
+                    </div>
+                    <div class="led-driver-slider">
+                        <input type="range" min="10" max="100" value="50" step="5"
+                               class="intensity-slider"
+                               oninput="updateLEDDriverIntensity(this)"
+                               onchange="setLEDDriverIntensity(this)"
+                               disabled>
+                        <span class="intensity-value">50%</span>
+                    </div>
+                </div>
+
                 <!-- Clignotement -->
                 <div class="blink-section">
                     <select class="blink-led-select">
