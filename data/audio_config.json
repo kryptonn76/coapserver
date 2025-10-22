@@ -1,0 +1,3840 @@
+{
+  "version": "1.0",
+  "source": "Piper TTS - Generic messages only",
+  "sample_rate": 44100,
+  "channels": 2,
+  "generated_date": "2025-10-14 13:12:25",
+  "statistics": {
+    "total_files": 258,
+    "converted": 258,
+    "failed": 0,
+    "categories_count": 7,
+    "music_albums": 8,
+    "music_tracks": 124
+  },
+  "categories": {
+    "alertes_pti": {
+      "description": "Alertes PTI, urgences, bouton d'urgence",
+      "file_count": 15,
+      "files": [
+        {
+          "filename": "utt_0001.wav",
+          "original_utt": 1,
+          "text": "Alerte PTI déclenchée, restez immobile, l’équipe arrive.",
+          "path": "alertes_pti/utt_0001.wav"
+        },
+        {
+          "filename": "utt_0002.wav",
+          "original_utt": 2,
+          "text": "Perte de mouvement détectée, confirmez « OK » dans les dix secondes.",
+          "path": "alertes_pti/utt_0002.wav"
+        },
+        {
+          "filename": "utt_0003.wav",
+          "original_utt": 3,
+          "text": "Bouton d’urgence pressé, canal prioritaire ouvert.",
+          "path": "alertes_pti/utt_0003.wav"
+        },
+        {
+          "filename": "utt_0004.wav",
+          "original_utt": 4,
+          "text": "Absence de réponse, levée de doute en cours.",
+          "path": "alertes_pti/utt_0004.wav"
+        },
+        {
+          "filename": "utt_0005.wav",
+          "original_utt": 5,
+          "text": "Chute suspectée, gardez votre calme, secours en route.",
+          "path": "alertes_pti/utt_0005.wav"
+        },
+        {
+          "filename": "utt_0108.wav",
+          "original_utt": 108,
+          "text": "Relevé d’ouverture à six heures trente.",
+          "path": "alertes_pti/utt_0108.wav"
+        },
+        {
+          "filename": "utt_0109.wav",
+          "original_utt": 109,
+          "text": "Fin de quart à dix-huit heures.",
+          "path": "alertes_pti/utt_0109.wav"
+        },
+        {
+          "filename": "utt_0111.wav",
+          "original_utt": 111,
+          "text": "La température est de vingt-deux degrés Celsius.",
+          "path": "alertes_pti/utt_0111.wav"
+        },
+        {
+          "filename": "utt_0112.wav",
+          "original_utt": 112,
+          "text": "La pression monte à cent kilopascals.",
+          "path": "alertes_pti/utt_0112.wav"
+        },
+        {
+          "filename": "utt_0113.wav",
+          "original_utt": 113,
+          "text": "L’humidité est de quarante-cinq pour cent.",
+          "path": "alertes_pti/utt_0113.wav"
+        },
+        {
+          "filename": "utt_0116.wav",
+          "original_utt": 116,
+          "text": "La distance est d’environ deux kilomètres.",
+          "path": "alertes_pti/utt_0116.wav"
+        },
+        {
+          "filename": "utt_0117.wav",
+          "original_utt": 117,
+          "text": "La charge admissible est de cinq cents kilogrammes.",
+          "path": "alertes_pti/utt_0117.wav"
+        },
+        {
+          "filename": "utt_0118.wav",
+          "original_utt": 118,
+          "text": "La tension mesurée est de deux cent trente volts.",
+          "path": "alertes_pti/utt_0118.wav"
+        },
+        {
+          "filename": "utt_0119.wav",
+          "original_utt": 119,
+          "text": "Le courant nominal est de dix ampères.",
+          "path": "alertes_pti/utt_0119.wav"
+        },
+        {
+          "filename": "utt_0120.wav",
+          "original_utt": 120,
+          "text": "La vitesse moyenne est de cinquante kilomètres à l’heure.",
+          "path": "alertes_pti/utt_0120.wav"
+        }
+      ]
+    },
+    "securite_evacuation": {
+      "description": "Sécurité, évacuation, risques, EPI",
+      "file_count": 19,
+      "files": [
+        {
+          "filename": "utt_0021.wav",
+          "original_utt": 21,
+          "text": "Évacuation immédiate demandée, suivez le marquage lumineux.",
+          "path": "securite_evacuation/utt_0021.wav"
+        },
+        {
+          "filename": "utt_0022.wav",
+          "original_utt": 22,
+          "text": "Présence de fumée au niveau deux, portez le masque.",
+          "path": "securite_evacuation/utt_0022.wav"
+        },
+        {
+          "filename": "utt_0023.wav",
+          "original_utt": 23,
+          "text": "Risque électrique détecté, coupez l’alimentation.",
+          "path": "securite_evacuation/utt_0023.wav"
+        },
+        {
+          "filename": "utt_0024.wav",
+          "original_utt": 24,
+          "text": "Fuite possible de gaz, éloignez-vous et ventilez la zone.",
+          "path": "securite_evacuation/utt_0024.wav"
+        },
+        {
+          "filename": "utt_0025.wav",
+          "original_utt": 25,
+          "text": "Sol glissant signalé, avancez prudemment.",
+          "path": "securite_evacuation/utt_0025.wav"
+        },
+        {
+          "filename": "utt_0026.wav",
+          "original_utt": 26,
+          "text": "Niveau sonore élevé, mettez la protection auditive.",
+          "path": "securite_evacuation/utt_0026.wav"
+        },
+        {
+          "filename": "utt_0027.wav",
+          "original_utt": 27,
+          "text": "Température ambiante élevée, hydratez-vous.",
+          "path": "securite_evacuation/utt_0027.wav"
+        },
+        {
+          "filename": "utt_0028.wav",
+          "original_utt": 28,
+          "text": "Objets en hauteur instables, sécurisez avant de passer.",
+          "path": "securite_evacuation/utt_0028.wav"
+        },
+        {
+          "filename": "utt_0029.wav",
+          "original_utt": 29,
+          "text": "Travaux en hauteur en cours, accès interdit sans harnais.",
+          "path": "securite_evacuation/utt_0029.wav"
+        },
+        {
+          "filename": "utt_0030.wav",
+          "original_utt": 30,
+          "text": "Zone de levage active, laissez la priorité aux chariots.",
+          "path": "securite_evacuation/utt_0030.wav"
+        },
+        {
+          "filename": "utt_0031.wav",
+          "original_utt": 31,
+          "text": "Porte coupe-feu déverrouillée pour évacuation.",
+          "path": "securite_evacuation/utt_0031.wav"
+        },
+        {
+          "filename": "utt_0032.wav",
+          "original_utt": 32,
+          "text": "Exercice de sécurité dans quinze minutes.",
+          "path": "securite_evacuation/utt_0032.wav"
+        },
+        {
+          "filename": "utt_0033.wav",
+          "original_utt": 33,
+          "text": "Fin d’alerte, retour progressif à la normale.",
+          "path": "securite_evacuation/utt_0033.wav"
+        },
+        {
+          "filename": "utt_0034.wav",
+          "original_utt": 34,
+          "text": "Serrage obligatoire du casque et des jugulaires.",
+          "path": "securite_evacuation/utt_0034.wav"
+        },
+        {
+          "filename": "utt_0035.wav",
+          "original_utt": 35,
+          "text": "Gants anti-coupure requis dans l’atelier.",
+          "path": "securite_evacuation/utt_0035.wav"
+        },
+        {
+          "filename": "utt_0036.wav",
+          "original_utt": 36,
+          "text": "Lunettes de sécurité obligatoires en zone machine.",
+          "path": "securite_evacuation/utt_0036.wav"
+        },
+        {
+          "filename": "utt_0037.wav",
+          "original_utt": 37,
+          "text": "Vestiaire d’urgence ouvert au rez-de-chaussée.",
+          "path": "securite_evacuation/utt_0037.wav"
+        },
+        {
+          "filename": "utt_0039.wav",
+          "original_utt": 39,
+          "text": "Trousse de premiers soins à l’accueil.",
+          "path": "securite_evacuation/utt_0039.wav"
+        },
+        {
+          "filename": "utt_0040.wav",
+          "original_utt": 40,
+          "text": "Point chaud détecté, éloignez tout matériau combustible.",
+          "path": "securite_evacuation/utt_0040.wav"
+        }
+      ]
+    },
+    "temps_unites": {
+      "description": "Heures, dates, nombres, unités de mesure",
+      "file_count": 57,
+      "files": [
+        {
+          "filename": "utt_0046.wav",
+          "original_utt": 46,
+          "text": "Consigne énergie appliquée, vérifiez les cadenas.",
+          "path": "temps_unites/utt_0046.wav"
+        },
+        {
+          "filename": "utt_0047.wav",
+          "original_utt": 47,
+          "text": "Remise sous tension autorisée, restez vigilant.",
+          "path": "temps_unites/utt_0047.wav"
+        },
+        {
+          "filename": "utt_0048.wav",
+          "original_utt": 48,
+          "text": "Échantillon requis, photo de contrôle à envoyer.",
+          "path": "temps_unites/utt_0048.wav"
+        },
+        {
+          "filename": "utt_0049.wav",
+          "original_utt": 49,
+          "text": "Rapport d’activité attendu à la fin du créneau.",
+          "path": "temps_unites/utt_0049.wav"
+        },
+        {
+          "filename": "utt_0050.wav",
+          "original_utt": 50,
+          "text": "Commentaire requis sur l’intervention en zone C.",
+          "path": "temps_unites/utt_0050.wav"
+        },
+        {
+          "filename": "utt_0052.wav",
+          "original_utt": 52,
+          "text": "Montez par l’escalier A jusqu’au niveau trois.",
+          "path": "temps_unites/utt_0052.wav"
+        },
+        {
+          "filename": "utt_0053.wav",
+          "original_utt": 53,
+          "text": "Ascenseur en maintenance, utilisez l’escalier B.",
+          "path": "temps_unites/utt_0053.wav"
+        },
+        {
+          "filename": "utt_0054.wav",
+          "original_utt": 54,
+          "text": "Accès restreint, scannez votre badge au portique deux.",
+          "path": "temps_unites/utt_0054.wav"
+        },
+        {
+          "filename": "utt_0056.wav",
+          "original_utt": 56,
+          "text": "Zone quatre saturée, détour recommandé par le corridor C.",
+          "path": "temps_unites/utt_0056.wav"
+        },
+        {
+          "filename": "utt_0058.wav",
+          "original_utt": 58,
+          "text": "Marquage lumineux actif, suivez les flèches bleues.",
+          "path": "temps_unites/utt_0058.wav"
+        },
+        {
+          "filename": "utt_0060.wav",
+          "original_utt": 60,
+          "text": "Station d’hydratation tout droit à vingt mètres.",
+          "path": "temps_unites/utt_0060.wav"
+        },
+        {
+          "filename": "utt_0061.wav",
+          "original_utt": 61,
+          "text": "Couloir D momentanément fermé, empruntez la galerie technique.",
+          "path": "temps_unites/utt_0061.wav"
+        },
+        {
+          "filename": "utt_0062.wav",
+          "original_utt": 62,
+          "text": "Passerelle suspendue ouverte, avancez prudemment.",
+          "path": "temps_unites/utt_0062.wav"
+        },
+        {
+          "filename": "utt_0063.wav",
+          "original_utt": 63,
+          "text": "Zone entrepôt, priorité aux chariots en mouvement.",
+          "path": "temps_unites/utt_0063.wav"
+        },
+        {
+          "filename": "utt_0064.wav",
+          "original_utt": 64,
+          "text": "Quai de livraison trois, avancez jusqu’au marquage jaune.",
+          "path": "temps_unites/utt_0064.wav"
+        },
+        {
+          "filename": "utt_0066.wav",
+          "original_utt": 66,
+          "text": "Accueil client au rez-de-chaussée, aile est.",
+          "path": "temps_unites/utt_0066.wav"
+        },
+        {
+          "filename": "utt_0068.wav",
+          "original_utt": 68,
+          "text": "Localisation mise à jour, vous êtes près de l’ascenseur A.",
+          "path": "temps_unites/utt_0068.wav"
+        },
+        {
+          "filename": "utt_0069.wav",
+          "original_utt": 69,
+          "text": "Balise de proximité détectée, tournez à droite.",
+          "path": "temps_unites/utt_0069.wav"
+        },
+        {
+          "filename": "utt_0070.wav",
+          "original_utt": 70,
+          "text": "Vous quittez la zone couverte, revenez vers la balise la plus proche.",
+          "path": "temps_unites/utt_0070.wav"
+        },
+        {
+          "filename": "utt_0071.wav",
+          "original_utt": 71,
+          "text": "Issue d’urgence à dix mètres sur votre gauche.",
+          "path": "temps_unites/utt_0071.wav"
+        },
+        {
+          "filename": "utt_0072.wav",
+          "original_utt": 72,
+          "text": "Escalier de service derrière la porte grise.",
+          "path": "temps_unites/utt_0072.wav"
+        },
+        {
+          "filename": "utt_0073.wav",
+          "original_utt": 73,
+          "text": "Couloir étroit, marchez en file indienne.",
+          "path": "temps_unites/utt_0073.wav"
+        },
+        {
+          "filename": "utt_0074.wav",
+          "original_utt": 74,
+          "text": "Aire de repos au bout du corridor.",
+          "path": "temps_unites/utt_0074.wav"
+        },
+        {
+          "filename": "utt_0075.wav",
+          "original_utt": 75,
+          "text": "Zone silencieuse, mettez votre cellulaire en vibreur.",
+          "path": "temps_unites/utt_0075.wav"
+        },
+        {
+          "filename": "utt_0076.wav",
+          "original_utt": 76,
+          "text": "Stationnement visiteurs niveau P-1.",
+          "path": "temps_unites/utt_0076.wav"
+        },
+        {
+          "filename": "utt_0077.wav",
+          "original_utt": 77,
+          "text": "Guichet sécurité au palier intermédiaire.",
+          "path": "temps_unites/utt_0077.wav"
+        },
+        {
+          "filename": "utt_0078.wav",
+          "original_utt": 78,
+          "text": "Lecteur de cartes à hauteur de la poignée.",
+          "path": "temps_unites/utt_0078.wav"
+        },
+        {
+          "filename": "utt_0079.wav",
+          "original_utt": 79,
+          "text": "Badge accepté, la porte va s’ouvrir.",
+          "path": "temps_unites/utt_0079.wav"
+        },
+        {
+          "filename": "utt_0080.wav",
+          "original_utt": 80,
+          "text": "Badge refusé, réessayez ou contactez la sécurité.",
+          "path": "temps_unites/utt_0080.wav"
+        },
+        {
+          "filename": "utt_0081.wav",
+          "original_utt": 81,
+          "text": "Alarme compresseur, secteur nord.",
+          "path": "temps_unites/utt_0081.wav"
+        },
+        {
+          "filename": "utt_0083.wav",
+          "original_utt": 83,
+          "text": "Chaudière en veille, relance autorisée.",
+          "path": "temps_unites/utt_0083.wav"
+        },
+        {
+          "filename": "utt_0084.wav",
+          "original_utt": 84,
+          "text": "Onduleur en bypass, vérifiez l’alimentation.",
+          "path": "temps_unites/utt_0084.wav"
+        },
+        {
+          "filename": "utt_0085.wav",
+          "original_utt": 85,
+          "text": "Vanne V-12 à demi ouverte, remettre en nominal.",
+          "path": "temps_unites/utt_0085.wav"
+        },
+        {
+          "filename": "utt_0086.wav",
+          "original_utt": 86,
+          "text": "Filtre F-21 encrassé, remplacez et consignez la mesure.",
+          "path": "temps_unites/utt_0086.wav"
+        },
+        {
+          "filename": "utt_0087.wav",
+          "original_utt": 87,
+          "text": "Capteur C-14 hors plage, recalibrez maintenant.",
+          "path": "temps_unites/utt_0087.wav"
+        },
+        {
+          "filename": "utt_0088.wav",
+          "original_utt": 88,
+          "text": "Test de continuité demandé sur le circuit secondaire.",
+          "path": "temps_unites/utt_0088.wav"
+        },
+        {
+          "filename": "utt_0089.wav",
+          "original_utt": 89,
+          "text": "Lecture de pression requise au collecteur principal.",
+          "path": "temps_unites/utt_0089.wav"
+        },
+        {
+          "filename": "utt_0090.wav",
+          "original_utt": 90,
+          "text": "Température acceptable, maintenez le régime actuel.",
+          "path": "temps_unites/utt_0090.wav"
+        },
+        {
+          "filename": "utt_0091.wav",
+          "original_utt": 91,
+          "text": "Consultez la fiche de sécurité avant manipulation.",
+          "path": "temps_unites/utt_0091.wav"
+        },
+        {
+          "filename": "utt_0211.wav",
+          "original_utt": 211,
+          "text": "Où est l’entrée principale?",
+          "path": "temps_unites/utt_0211.wav"
+        },
+        {
+          "filename": "utt_0212.wav",
+          "original_utt": 212,
+          "text": "Où se trouve le poste de secours?",
+          "path": "temps_unites/utt_0212.wav"
+        },
+        {
+          "filename": "utt_0213.wav",
+          "original_utt": 213,
+          "text": "À quelle heure commence la réunion?",
+          "path": "temps_unites/utt_0213.wav"
+        },
+        {
+          "filename": "utt_0214.wav",
+          "original_utt": 214,
+          "text": "Pouvez-vous confirmer la réception?",
+          "path": "temps_unites/utt_0214.wav"
+        },
+        {
+          "filename": "utt_0276.wav",
+          "original_utt": 276,
+          "text": "Un écart de température a été corrigé.",
+          "path": "temps_unites/utt_0276.wav"
+        },
+        {
+          "filename": "utt_0277.wav",
+          "original_utt": 277,
+          "text": "Deux points lumineux en maintenance.",
+          "path": "temps_unites/utt_0277.wav"
+        },
+        {
+          "filename": "utt_0278.wav",
+          "original_utt": 278,
+          "text": "Trois badges expirent cette semaine.",
+          "path": "temps_unites/utt_0278.wav"
+        },
+        {
+          "filename": "utt_0279.wav",
+          "original_utt": 279,
+          "text": "Quatre interventions planifiées demain.",
+          "path": "temps_unites/utt_0279.wav"
+        },
+        {
+          "filename": "utt_0280.wav",
+          "original_utt": 280,
+          "text": "Cinq alarmes acquittées automatiquement.",
+          "path": "temps_unites/utt_0280.wav"
+        },
+        {
+          "filename": "utt_0281.wav",
+          "original_utt": 281,
+          "text": "Le taux d’occupation est de vingt pour cent.",
+          "path": "temps_unites/utt_0281.wav"
+        },
+        {
+          "filename": "utt_0282.wav",
+          "original_utt": 282,
+          "text": "Le seuil CO₂ atteint neuf cents parties par million.",
+          "path": "temps_unites/utt_0282.wav"
+        },
+        {
+          "filename": "utt_0283.wav",
+          "original_utt": 283,
+          "text": "Le débit d’air est nominal.",
+          "path": "temps_unites/utt_0283.wav"
+        },
+        {
+          "filename": "utt_0284.wav",
+          "original_utt": 284,
+          "text": "Le ventilateur V-3 est arrêté.",
+          "path": "temps_unites/utt_0284.wav"
+        },
+        {
+          "filename": "utt_0285.wav",
+          "original_utt": 285,
+          "text": "Le capteur d’ouverture est fermé.",
+          "path": "temps_unites/utt_0285.wav"
+        },
+        {
+          "filename": "utt_0287.wav",
+          "original_utt": 287,
+          "text": "La lumière de présence est allumée.",
+          "path": "temps_unites/utt_0287.wav"
+        },
+        {
+          "filename": "utt_0288.wav",
+          "original_utt": 288,
+          "text": "Le chauffage est en mode réduit.",
+          "path": "temps_unites/utt_0288.wav"
+        },
+        {
+          "filename": "utt_0289.wav",
+          "original_utt": 289,
+          "text": "Le refroidissement est désactivé.",
+          "path": "temps_unites/utt_0289.wav"
+        },
+        {
+          "filename": "utt_0290.wav",
+          "original_utt": 290,
+          "text": "La ventilation passe en nocturne.",
+          "path": "temps_unites/utt_0290.wav"
+        }
+      ]
+    },
+    "operations_techniques": {
+      "description": "Opérations, maintenance, contrôles techniques",
+      "file_count": 54,
+      "files": [
+        {
+          "filename": "utt_0141.wav",
+          "original_utt": 141,
+          "text": "Début inspection visuelle du convoyeur.",
+          "path": "operations_techniques/utt_0141.wav"
+        },
+        {
+          "filename": "utt_0142.wav",
+          "original_utt": 142,
+          "text": "Contrôlez la tension de la courroie.",
+          "path": "operations_techniques/utt_0142.wav"
+        },
+        {
+          "filename": "utt_0143.wav",
+          "original_utt": 143,
+          "text": "Vérifiez le niveau d’huile du réducteur.",
+          "path": "operations_techniques/utt_0143.wav"
+        },
+        {
+          "filename": "utt_0144.wav",
+          "original_utt": 144,
+          "text": "Replacez le capot de protection et verrouillez.",
+          "path": "operations_techniques/utt_0144.wav"
+        },
+        {
+          "filename": "utt_0145.wav",
+          "original_utt": 145,
+          "text": "Réarmez l’arrêt d’urgence après contrôle.",
+          "path": "operations_techniques/utt_0145.wav"
+        },
+        {
+          "filename": "utt_0146.wav",
+          "original_utt": 146,
+          "text": "Consignez la valeur de vibration en millimètres par seconde.",
+          "path": "operations_techniques/utt_0146.wav"
+        },
+        {
+          "filename": "utt_0147.wav",
+          "original_utt": 147,
+          "text": "Mesurez le jeu axial, notez la lecture.",
+          "path": "operations_techniques/utt_0147.wav"
+        },
+        {
+          "filename": "utt_0148.wav",
+          "original_utt": 148,
+          "text": "Serrez les connecteurs avant remise sous tension.",
+          "path": "operations_techniques/utt_0148.wav"
+        },
+        {
+          "filename": "utt_0149.wav",
+          "original_utt": 149,
+          "text": "Test de redémarrage autorisé, restez vigilant.",
+          "path": "operations_techniques/utt_0149.wav"
+        },
+        {
+          "filename": "utt_0150.wav",
+          "original_utt": 150,
+          "text": "Validation qualité requise avant remise au client.",
+          "path": "operations_techniques/utt_0150.wav"
+        },
+        {
+          "filename": "utt_0182.wav",
+          "original_utt": 182,
+          "text": "Laissez la priorité aux chariots en approche.",
+          "path": "operations_techniques/utt_0182.wav"
+        },
+        {
+          "filename": "utt_0183.wav",
+          "original_utt": 183,
+          "text": "Marchez côté droit du couloir.",
+          "path": "operations_techniques/utt_0183.wav"
+        },
+        {
+          "filename": "utt_0189.wav",
+          "original_utt": 189,
+          "text": "Désinfectez vos mains avant d’entrer.",
+          "path": "operations_techniques/utt_0189.wav"
+        },
+        {
+          "filename": "utt_0190.wav",
+          "original_utt": 190,
+          "text": "Respectez les consignes affichées.",
+          "path": "operations_techniques/utt_0190.wav"
+        },
+        {
+          "filename": "utt_0191.wav",
+          "original_utt": 191,
+          "text": "Zéro incident déclaré sur le dernier quart.",
+          "path": "operations_techniques/utt_0191.wav"
+        },
+        {
+          "filename": "utt_0193.wav",
+          "original_utt": 193,
+          "text": "Deux anomalies restent à diagnostiquer.",
+          "path": "operations_techniques/utt_0193.wav"
+        },
+        {
+          "filename": "utt_0195.wav",
+          "original_utt": 195,
+          "text": "Cinq alarmes filtrées automatiquement.",
+          "path": "operations_techniques/utt_0195.wav"
+        },
+        {
+          "filename": "utt_0196.wav",
+          "original_utt": 196,
+          "text": "Dix rapports envoyés au superviseur.",
+          "path": "operations_techniques/utt_0196.wav"
+        },
+        {
+          "filename": "utt_0197.wav",
+          "original_utt": 197,
+          "text": "Vingt-deux degrés, confort thermique atteint.",
+          "path": "operations_techniques/utt_0197.wav"
+        },
+        {
+          "filename": "utt_0200.wav",
+          "original_utt": 200,
+          "text": "Mille mercis pour votre vigilance.",
+          "path": "operations_techniques/utt_0200.wav"
+        },
+        {
+          "filename": "utt_0234.wav",
+          "original_utt": 234,
+          "text": "Les consignes ont été mises à jour.",
+          "path": "operations_techniques/utt_0234.wav"
+        },
+        {
+          "filename": "utt_0235.wav",
+          "original_utt": 235,
+          "text": "Les accès visiteurs sont limités.",
+          "path": "operations_techniques/utt_0235.wav"
+        },
+        {
+          "filename": "utt_0236.wav",
+          "original_utt": 236,
+          "text": "Des travaux sont prévus au niveau deux.",
+          "path": "operations_techniques/utt_0236.wav"
+        },
+        {
+          "filename": "utt_0237.wav",
+          "original_utt": 237,
+          "text": "Des camions attendent au quai trois.",
+          "path": "operations_techniques/utt_0237.wav"
+        },
+        {
+          "filename": "utt_0238.wav",
+          "original_utt": 238,
+          "text": "Des colis urgents sont au comptoir.",
+          "path": "operations_techniques/utt_0238.wav"
+        },
+        {
+          "filename": "utt_0239.wav",
+          "original_utt": 239,
+          "text": "Des contrôles aléatoires auront lieu aujourd’hui.",
+          "path": "operations_techniques/utt_0239.wav"
+        },
+        {
+          "filename": "utt_0240.wav",
+          "original_utt": 240,
+          "text": "Des chariots circulent dans l’allée.",
+          "path": "operations_techniques/utt_0240.wav"
+        },
+        {
+          "filename": "utt_0241.wav",
+          "original_utt": 241,
+          "text": "C’est l’entrée principale du bâtiment.",
+          "path": "operations_techniques/utt_0241.wav"
+        },
+        {
+          "filename": "utt_0242.wav",
+          "original_utt": 242,
+          "text": "C’est l’arrivée officielle du groupe.",
+          "path": "operations_techniques/utt_0242.wav"
+        },
+        {
+          "filename": "utt_0244.wav",
+          "original_utt": 244,
+          "text": "Qu’on termine ce secteur avant midi.",
+          "path": "operations_techniques/utt_0244.wav"
+        },
+        {
+          "filename": "utt_0248.wav",
+          "original_utt": 248,
+          "text": "D’ici quelques minutes, ce sera prêt.",
+          "path": "operations_techniques/utt_0248.wav"
+        },
+        {
+          "filename": "utt_0249.wav",
+          "original_utt": 249,
+          "text": "Premier étage, ascenseur à gauche.",
+          "path": "operations_techniques/utt_0249.wav"
+        },
+        {
+          "filename": "utt_0250.wav",
+          "original_utt": 250,
+          "text": "Dernier contrôle en zone B, puis on sort.",
+          "path": "operations_techniques/utt_0250.wav"
+        },
+        {
+          "filename": "utt_0261.wav",
+          "original_utt": 261,
+          "text": "Clôturez la mission et synchronisez vos données.",
+          "path": "operations_techniques/utt_0261.wav"
+        },
+        {
+          "filename": "utt_0262.wav",
+          "original_utt": 262,
+          "text": "Dernier rappel sécurité, retirez la consignation.",
+          "path": "operations_techniques/utt_0262.wav"
+        },
+        {
+          "filename": "utt_0263.wav",
+          "original_utt": 263,
+          "text": "Fin de créneau, retour point de rassemblement sud.",
+          "path": "operations_techniques/utt_0263.wav"
+        },
+        {
+          "filename": "utt_0264.wav",
+          "original_utt": 264,
+          "text": "Canal prioritaire libéré, passez en canal un.",
+          "path": "operations_techniques/utt_0264.wav"
+        },
+        {
+          "filename": "utt_0265.wav",
+          "original_utt": 265,
+          "text": "Votre badge est actif jusqu’à dix-sept heures.",
+          "path": "operations_techniques/utt_0265.wav"
+        },
+        {
+          "filename": "utt_0266.wav",
+          "original_utt": 266,
+          "text": "Accès atelier mécanique autorisé.",
+          "path": "operations_techniques/utt_0266.wav"
+        },
+        {
+          "filename": "utt_0267.wav",
+          "original_utt": 267,
+          "text": "Inspection visuelle requise sur la courroie.",
+          "path": "operations_techniques/utt_0267.wav"
+        },
+        {
+          "filename": "utt_0268.wav",
+          "original_utt": 268,
+          "text": "Essai de redémarrage en sécurité.",
+          "path": "operations_techniques/utt_0268.wav"
+        },
+        {
+          "filename": "utt_0269.wav",
+          "original_utt": 269,
+          "text": "Validation qualité nécessaire avant remise.",
+          "path": "operations_techniques/utt_0269.wav"
+        },
+        {
+          "filename": "utt_0272.wav",
+          "original_utt": 272,
+          "text": "Balise manquante, contactez le support.",
+          "path": "operations_techniques/utt_0272.wav"
+        },
+        {
+          "filename": "utt_0273.wav",
+          "original_utt": 273,
+          "text": "Carte indoor mise à jour téléchargée.",
+          "path": "operations_techniques/utt_0273.wav"
+        },
+        {
+          "filename": "utt_0274.wav",
+          "original_utt": 274,
+          "text": "Télémetrie reçue, capteur opérationnel.",
+          "path": "operations_techniques/utt_0274.wav"
+        },
+        {
+          "filename": "utt_0275.wav",
+          "original_utt": 275,
+          "text": "Aucune anomalie sur les dix derniers relevés.",
+          "path": "operations_techniques/utt_0275.wav"
+        },
+        {
+          "filename": "utt_0341.wav",
+          "original_utt": 341,
+          "text": "Clavier badge en panne, utilisez le lecteur secondaire.",
+          "path": "operations_techniques/utt_0341.wav"
+        },
+        {
+          "filename": "utt_0342.wav",
+          "original_utt": 342,
+          "text": "Accès visiteur créé pour aujourd’hui.",
+          "path": "operations_techniques/utt_0342.wav"
+        },
+        {
+          "filename": "utt_0344.wav",
+          "original_utt": 344,
+          "text": "Accès refusé, droits insuffisants.",
+          "path": "operations_techniques/utt_0344.wav"
+        },
+        {
+          "filename": "utt_0345.wav",
+          "original_utt": 345,
+          "text": "Accès accordé, bienvenue.",
+          "path": "operations_techniques/utt_0345.wav"
+        },
+        {
+          "filename": "utt_0346.wav",
+          "original_utt": 346,
+          "text": "Téléversement de photo requis pour l’accréditation.",
+          "path": "operations_techniques/utt_0346.wav"
+        },
+        {
+          "filename": "utt_0347.wav",
+          "original_utt": 347,
+          "text": "Formation sécurité à renouveler ce mois-ci.",
+          "path": "operations_techniques/utt_0347.wav"
+        },
+        {
+          "filename": "utt_0349.wav",
+          "original_utt": 349,
+          "text": "Alerte de proximité véhicule en marche.",
+          "path": "operations_techniques/utt_0349.wav"
+        },
+        {
+          "filename": "utt_0350.wav",
+          "original_utt": 350,
+          "text": "Zone piétonne, vitesse limitée.",
+          "path": "operations_techniques/utt_0350.wav"
+        }
+      ]
+    },
+    "navigation_indoor": {
+      "description": "Navigation, localisation, guidage intérieur",
+      "file_count": 56,
+      "files": [
+        {
+          "filename": "utt_0156.wav",
+          "original_utt": 156,
+          "text": "Changez de canal, basculez sur canal deux.",
+          "path": "navigation_indoor/utt_0156.wav"
+        },
+        {
+          "filename": "utt_0158.wav",
+          "original_utt": 158,
+          "text": "Audio faible, parlez plus près du micro.",
+          "path": "navigation_indoor/utt_0158.wav"
+        },
+        {
+          "filename": "utt_0160.wav",
+          "original_utt": 160,
+          "text": "Document joint disponible dans l’application.",
+          "path": "navigation_indoor/utt_0160.wav"
+        },
+        {
+          "filename": "utt_0163.wav",
+          "original_utt": 163,
+          "text": "La fin de semaine commence vendredi soir.",
+          "path": "navigation_indoor/utt_0163.wav"
+        },
+        {
+          "filename": "utt_0165.wav",
+          "original_utt": 165,
+          "text": "Stationnement complet, prends l’entrée visiteurs.",
+          "path": "navigation_indoor/utt_0165.wav"
+        },
+        {
+          "filename": "utt_0166.wav",
+          "original_utt": 166,
+          "text": "Mets ton chandail haute visibilité en zone logistique.",
+          "path": "navigation_indoor/utt_0166.wav"
+        },
+        {
+          "filename": "utt_0168.wav",
+          "original_utt": 168,
+          "text": "Le chalet est fermé, accès interdit aujourd’hui.",
+          "path": "navigation_indoor/utt_0168.wav"
+        },
+        {
+          "filename": "utt_0170.wav",
+          "original_utt": 170,
+          "text": "Merci, c’est correct, bon travail!",
+          "path": "navigation_indoor/utt_0170.wav"
+        },
+        {
+          "filename": "utt_0172.wav",
+          "original_utt": 172,
+          "text": "Chaudière en veille, température stable.",
+          "path": "navigation_indoor/utt_0172.wav"
+        },
+        {
+          "filename": "utt_0173.wav",
+          "original_utt": 173,
+          "text": "Onduleur normal, tension nominale.",
+          "path": "navigation_indoor/utt_0173.wav"
+        },
+        {
+          "filename": "utt_0174.wav",
+          "original_utt": 174,
+          "text": "Batterie faible, branchez au chargeur dès que possible.",
+          "path": "navigation_indoor/utt_0174.wav"
+        },
+        {
+          "filename": "utt_0175.wav",
+          "original_utt": 175,
+          "text": "Capteur remplacé hier, calibration requise.",
+          "path": "navigation_indoor/utt_0175.wav"
+        },
+        {
+          "filename": "utt_0176.wav",
+          "original_utt": 176,
+          "text": "Mise à jour de l’application réussie.",
+          "path": "navigation_indoor/utt_0176.wav"
+        },
+        {
+          "filename": "utt_0178.wav",
+          "original_utt": 178,
+          "text": "Synchronisation terminée, données sauvegardées.",
+          "path": "navigation_indoor/utt_0178.wav"
+        },
+        {
+          "filename": "utt_0179.wav",
+          "original_utt": 179,
+          "text": "Inventaire à lancer demain matin.",
+          "path": "navigation_indoor/utt_0179.wav"
+        },
+        {
+          "filename": "utt_0180.wav",
+          "original_utt": 180,
+          "text": "Livraison retardée, replanifiez après quinze heures.",
+          "path": "navigation_indoor/utt_0180.wav"
+        },
+        {
+          "filename": "utt_0225.wav",
+          "original_utt": 225,
+          "text": "Portez vos lunettes de sécurité.",
+          "path": "navigation_indoor/utt_0225.wav"
+        },
+        {
+          "filename": "utt_0227.wav",
+          "original_utt": 227,
+          "text": "Débranchez l’appareil avant l’entretien.",
+          "path": "navigation_indoor/utt_0227.wav"
+        },
+        {
+          "filename": "utt_0228.wav",
+          "original_utt": 228,
+          "text": "Notez la température sur la fiche.",
+          "path": "navigation_indoor/utt_0228.wav"
+        },
+        {
+          "filename": "utt_0229.wav",
+          "original_utt": 229,
+          "text": "Installez le ruban de balisage.",
+          "path": "navigation_indoor/utt_0229.wav"
+        },
+        {
+          "filename": "utt_0231.wav",
+          "original_utt": 231,
+          "text": "Les employés arrivent en avance.",
+          "path": "navigation_indoor/utt_0231.wav"
+        },
+        {
+          "filename": "utt_0232.wav",
+          "original_utt": 232,
+          "text": "Les équipes d’entretien sont en route.",
+          "path": "navigation_indoor/utt_0232.wav"
+        },
+        {
+          "filename": "utt_0233.wav",
+          "original_utt": 233,
+          "text": "Les alarmes actives sont affichées.",
+          "path": "navigation_indoor/utt_0233.wav"
+        },
+        {
+          "filename": "utt_0291.wav",
+          "original_utt": 291,
+          "text": "Vous entrez en zone silencieuse, baissez la voix.",
+          "path": "navigation_indoor/utt_0291.wav"
+        },
+        {
+          "filename": "utt_0292.wav",
+          "original_utt": 292,
+          "text": "Vous quittez la zone couverte, revenez vers la balise.",
+          "path": "navigation_indoor/utt_0292.wav"
+        },
+        {
+          "filename": "utt_0293.wav",
+          "original_utt": 293,
+          "text": "Vous êtes à moins de cinq mètres de la destination.",
+          "path": "navigation_indoor/utt_0293.wav"
+        },
+        {
+          "filename": "utt_0294.wav",
+          "original_utt": 294,
+          "text": "Vous avez dépassé le point, faites demi-tour.",
+          "path": "navigation_indoor/utt_0294.wav"
+        },
+        {
+          "filename": "utt_0295.wav",
+          "original_utt": 295,
+          "text": "Vous arrivez au carrefour, prenez à droite.",
+          "path": "navigation_indoor/utt_0295.wav"
+        },
+        {
+          "filename": "utt_0297.wav",
+          "original_utt": 297,
+          "text": "Continuez tout droit sur vingt mètres.",
+          "path": "navigation_indoor/utt_0297.wav"
+        },
+        {
+          "filename": "utt_0298.wav",
+          "original_utt": 298,
+          "text": "Traversez le hall et montez au troisième.",
+          "path": "navigation_indoor/utt_0298.wav"
+        },
+        {
+          "filename": "utt_0299.wav",
+          "original_utt": 299,
+          "text": "Descendez d’un étage et tournez à gauche.",
+          "path": "navigation_indoor/utt_0299.wav"
+        },
+        {
+          "filename": "utt_0300.wav",
+          "original_utt": 300,
+          "text": "Prenez l’escalier de service à la prochaine porte.",
+          "path": "navigation_indoor/utt_0300.wav"
+        },
+        {
+          "filename": "utt_0321.wav",
+          "original_utt": 321,
+          "text": "Corridor encombré, empruntez la sortie latérale.",
+          "path": "navigation_indoor/utt_0321.wav"
+        },
+        {
+          "filename": "utt_0322.wav",
+          "original_utt": 322,
+          "text": "Travaux de peinture en cours, aérez la zone.",
+          "path": "navigation_indoor/utt_0322.wav"
+        },
+        {
+          "filename": "utt_0323.wav",
+          "original_utt": 323,
+          "text": "Colle fraîche, n’y touchez pas.",
+          "path": "navigation_indoor/utt_0323.wav"
+        },
+        {
+          "filename": "utt_0324.wav",
+          "original_utt": 324,
+          "text": "Escabeau non conforme, remplacez-le.",
+          "path": "navigation_indoor/utt_0324.wav"
+        },
+        {
+          "filename": "utt_0325.wav",
+          "original_utt": 325,
+          "text": "Prise défectueuse, mettez hors service.",
+          "path": "navigation_indoor/utt_0325.wav"
+        },
+        {
+          "filename": "utt_0326.wav",
+          "original_utt": 326,
+          "text": "Fuite d’eau légère, placez un bac de rétention.",
+          "path": "navigation_indoor/utt_0326.wav"
+        },
+        {
+          "filename": "utt_0328.wav",
+          "original_utt": 328,
+          "text": "Bruit anormal, arrêtez l’équipement et alertez.",
+          "path": "navigation_indoor/utt_0328.wav"
+        },
+        {
+          "filename": "utt_0329.wav",
+          "original_utt": 329,
+          "text": "Vibration excessive, réduisez la charge.",
+          "path": "navigation_indoor/utt_0329.wav"
+        },
+        {
+          "filename": "utt_0330.wav",
+          "original_utt": 330,
+          "text": "Échauffement détecté, laissez refroidir.",
+          "path": "navigation_indoor/utt_0330.wav"
+        },
+        {
+          "filename": "utt_0351.wav",
+          "original_utt": 351,
+          "text": "Guide pas à pas, suivez la flèche bleue.",
+          "path": "navigation_indoor/utt_0351.wav"
+        },
+        {
+          "filename": "utt_0353.wav",
+          "original_utt": 353,
+          "text": "Étape deux, prenez l’escalier A.",
+          "path": "navigation_indoor/utt_0353.wav"
+        },
+        {
+          "filename": "utt_0354.wav",
+          "original_utt": 354,
+          "text": "Étape trois, tournez à gauche au palier.",
+          "path": "navigation_indoor/utt_0354.wav"
+        },
+        {
+          "filename": "utt_0357.wav",
+          "original_utt": 357,
+          "text": "Itinéraire recalculé, obstacle imprévu.",
+          "path": "navigation_indoor/utt_0357.wav"
+        },
+        {
+          "filename": "utt_0358.wav",
+          "original_utt": 358,
+          "text": "Restez sur la droite, couloir étroit.",
+          "path": "navigation_indoor/utt_0358.wav"
+        },
+        {
+          "filename": "utt_0359.wav",
+          "original_utt": 359,
+          "text": "Attendez l’ascenseur, cabine en approche.",
+          "path": "navigation_indoor/utt_0359.wav"
+        },
+        {
+          "filename": "utt_0360.wav",
+          "original_utt": 360,
+          "text": "Montez jusqu’au troisième et sortez côté est.",
+          "path": "navigation_indoor/utt_0360.wav"
+        },
+        {
+          "filename": "utt_0371.wav",
+          "original_utt": 371,
+          "text": "Instruction, attendez le feu vert.",
+          "path": "navigation_indoor/utt_0371.wav"
+        },
+        {
+          "filename": "utt_0372.wav",
+          "original_utt": 372,
+          "text": "Instruction, ne franchissez pas la barrière.",
+          "path": "navigation_indoor/utt_0372.wav"
+        },
+        {
+          "filename": "utt_0373.wav",
+          "original_utt": 373,
+          "text": "Instruction, gardez la ligne claire.",
+          "path": "navigation_indoor/utt_0373.wav"
+        },
+        {
+          "filename": "utt_0375.wav",
+          "original_utt": 375,
+          "text": "Instruction, maintenez la zone propre.",
+          "path": "navigation_indoor/utt_0375.wav"
+        },
+        {
+          "filename": "utt_0377.wav",
+          "original_utt": 377,
+          "text": "Instruction, ne touchez pas aux conducteurs nus.",
+          "path": "navigation_indoor/utt_0377.wav"
+        },
+        {
+          "filename": "utt_0378.wav",
+          "original_utt": 378,
+          "text": "Instruction, signalez tout écart.",
+          "path": "navigation_indoor/utt_0378.wav"
+        },
+        {
+          "filename": "utt_0379.wav",
+          "original_utt": 379,
+          "text": "Instruction, éteignez l’outil après usage.",
+          "path": "navigation_indoor/utt_0379.wav"
+        },
+        {
+          "filename": "utt_0380.wav",
+          "original_utt": 380,
+          "text": "Instruction, verrouillez la porte en sortant.",
+          "path": "navigation_indoor/utt_0380.wav"
+        }
+      ]
+    },
+    "instructions_consignes": {
+      "description": "Instructions, demandes, rappels de sécurité",
+      "file_count": 41,
+      "files": [
+        {
+          "filename": "utt_0230.wav",
+          "original_utt": 230,
+          "text": "Restez disponible sur le canal prioritaire.",
+          "path": "instructions_consignes/utt_0230.wav"
+        },
+        {
+          "filename": "utt_0301.wav",
+          "original_utt": 301,
+          "text": "Rappel PTI, confirmez « je vais bien ».",
+          "path": "instructions_consignes/utt_0301.wav"
+        },
+        {
+          "filename": "utt_0302.wav",
+          "original_utt": 302,
+          "text": "Rappel hydratation, buvez de l’eau.",
+          "path": "instructions_consignes/utt_0302.wav"
+        },
+        {
+          "filename": "utt_0303.wav",
+          "original_utt": 303,
+          "text": "Rappel EPI, casque et lunettes requis.",
+          "path": "instructions_consignes/utt_0303.wav"
+        },
+        {
+          "filename": "utt_0304.wav",
+          "original_utt": 304,
+          "text": "Rappel de consignation, cadenas et étiquette.",
+          "path": "instructions_consignes/utt_0304.wav"
+        },
+        {
+          "filename": "utt_0305.wav",
+          "original_utt": 305,
+          "text": "Rappel de nettoyage, laissez la zone propre.",
+          "path": "instructions_consignes/utt_0305.wav"
+        },
+        {
+          "filename": "utt_0306.wav",
+          "original_utt": 306,
+          "text": "Rappel d’inventaire, scannez les étiquettes.",
+          "path": "instructions_consignes/utt_0306.wav"
+        },
+        {
+          "filename": "utt_0307.wav",
+          "original_utt": 307,
+          "text": "Rappel de sécurité, gardez vos mains hors de la zone.",
+          "path": "instructions_consignes/utt_0307.wav"
+        },
+        {
+          "filename": "utt_0308.wav",
+          "original_utt": 308,
+          "text": "Rappel radio, test audio dans une minute.",
+          "path": "instructions_consignes/utt_0308.wav"
+        },
+        {
+          "filename": "utt_0309.wav",
+          "original_utt": 309,
+          "text": "Rappel position, envoyez votre point GPS indoor.",
+          "path": "instructions_consignes/utt_0309.wav"
+        },
+        {
+          "filename": "utt_0310.wav",
+          "original_utt": 310,
+          "text": "Rappel fin de quart, clôturez vos tâches.",
+          "path": "instructions_consignes/utt_0310.wav"
+        },
+        {
+          "filename": "utt_0311.wav",
+          "original_utt": 311,
+          "text": "Panique détectée, appuyez sur le bouton d’urgence.",
+          "path": "instructions_consignes/utt_0311.wav"
+        },
+        {
+          "filename": "utt_0312.wav",
+          "original_utt": 312,
+          "text": "Alerte silencieuse activée, la sécurité vous écoute.",
+          "path": "instructions_consignes/utt_0312.wav"
+        },
+        {
+          "filename": "utt_0313.wav",
+          "original_utt": 313,
+          "text": "Message au superviseur envoyé.",
+          "path": "instructions_consignes/utt_0313.wav"
+        },
+        {
+          "filename": "utt_0314.wav",
+          "original_utt": 314,
+          "text": "Acquittement nécessaire, touchez le bouton vert.",
+          "path": "instructions_consignes/utt_0314.wav"
+        },
+        {
+          "filename": "utt_0315.wav",
+          "original_utt": 315,
+          "text": "Lecture du QR code réussie.",
+          "path": "instructions_consignes/utt_0315.wav"
+        },
+        {
+          "filename": "utt_0316.wav",
+          "original_utt": 316,
+          "text": "Horodatage automatique effectué.",
+          "path": "instructions_consignes/utt_0316.wav"
+        },
+        {
+          "filename": "utt_0317.wav",
+          "original_utt": 317,
+          "text": "Signature électronique enregistrée.",
+          "path": "instructions_consignes/utt_0317.wav"
+        },
+        {
+          "filename": "utt_0318.wav",
+          "original_utt": 318,
+          "text": "Données chiffrées et sauvegardées.",
+          "path": "instructions_consignes/utt_0318.wav"
+        },
+        {
+          "filename": "utt_0319.wav",
+          "original_utt": 319,
+          "text": "Journal d’événements mis à jour.",
+          "path": "instructions_consignes/utt_0319.wav"
+        },
+        {
+          "filename": "utt_0320.wav",
+          "original_utt": 320,
+          "text": "Configuration restaurée avec succès.",
+          "path": "instructions_consignes/utt_0320.wav"
+        },
+        {
+          "filename": "utt_0361.wav",
+          "original_utt": 361,
+          "text": "Demande de photo du scellé.",
+          "path": "instructions_consignes/utt_0361.wav"
+        },
+        {
+          "filename": "utt_0362.wav",
+          "original_utt": 362,
+          "text": "Demande de commentaire sur l’anomalie.",
+          "path": "instructions_consignes/utt_0362.wav"
+        },
+        {
+          "filename": "utt_0363.wav",
+          "original_utt": 363,
+          "text": "Demande de mesure de température.",
+          "path": "instructions_consignes/utt_0363.wav"
+        },
+        {
+          "filename": "utt_0364.wav",
+          "original_utt": 364,
+          "text": "Demande de mesure de pression.",
+          "path": "instructions_consignes/utt_0364.wav"
+        },
+        {
+          "filename": "utt_0365.wav",
+          "original_utt": 365,
+          "text": "Demande de lecture compteur énergie.",
+          "path": "instructions_consignes/utt_0365.wav"
+        },
+        {
+          "filename": "utt_0366.wav",
+          "original_utt": 366,
+          "text": "Demande de signature client.",
+          "path": "instructions_consignes/utt_0366.wav"
+        },
+        {
+          "filename": "utt_0367.wav",
+          "original_utt": 367,
+          "text": "Demande de position actuelle.",
+          "path": "instructions_consignes/utt_0367.wav"
+        },
+        {
+          "filename": "utt_0368.wav",
+          "original_utt": 368,
+          "text": "Demande de relance de l’équipement.",
+          "path": "instructions_consignes/utt_0368.wav"
+        },
+        {
+          "filename": "utt_0369.wav",
+          "original_utt": 369,
+          "text": "Demande de vérification visuelle.",
+          "path": "instructions_consignes/utt_0369.wav"
+        },
+        {
+          "filename": "utt_0370.wav",
+          "original_utt": 370,
+          "text": "Demande de validation finale.",
+          "path": "instructions_consignes/utt_0370.wav"
+        },
+        {
+          "filename": "utt_0381.wav",
+          "original_utt": 381,
+          "text": "Climat, vent fort prévu cet après-midi.",
+          "path": "instructions_consignes/utt_0381.wav"
+        },
+        {
+          "filename": "utt_0382.wav",
+          "original_utt": 382,
+          "text": "Climat, pluie soutenue, limitez les sorties.",
+          "path": "instructions_consignes/utt_0382.wav"
+        },
+        {
+          "filename": "utt_0383.wav",
+          "original_utt": 383,
+          "text": "Climat, verglas possible en soirée.",
+          "path": "instructions_consignes/utt_0383.wav"
+        },
+        {
+          "filename": "utt_0384.wav",
+          "original_utt": 384,
+          "text": "Climat, chaleur élevée, augmentez les pauses.",
+          "path": "instructions_consignes/utt_0384.wav"
+        },
+        {
+          "filename": "utt_0385.wav",
+          "original_utt": 385,
+          "text": "Climat, orage en approche, suspendre travaux en hauteur.",
+          "path": "instructions_consignes/utt_0385.wav"
+        },
+        {
+          "filename": "utt_0386.wav",
+          "original_utt": 386,
+          "text": "Climat, neige faible, prudence sur les marches.",
+          "path": "instructions_consignes/utt_0386.wav"
+        },
+        {
+          "filename": "utt_0387.wav",
+          "original_utt": 387,
+          "text": "Climat, visibilité réduite, éclairez vos déplacements.",
+          "path": "instructions_consignes/utt_0387.wav"
+        },
+        {
+          "filename": "utt_0388.wav",
+          "original_utt": 388,
+          "text": "Climat, humidex élevé, buvez souvent.",
+          "path": "instructions_consignes/utt_0388.wav"
+        },
+        {
+          "filename": "utt_0389.wav",
+          "original_utt": 389,
+          "text": "Climat, rafales en cour intérieure.",
+          "path": "instructions_consignes/utt_0389.wav"
+        },
+        {
+          "filename": "utt_0390.wav",
+          "original_utt": 390,
+          "text": "Climat, alerte météo levée.",
+          "path": "instructions_consignes/utt_0390.wav"
+        }
+      ]
+    },
+    "systeme_statut": {
+      "description": "Messages système, confirmations, remerciements",
+      "file_count": 16,
+      "files": [
+        {
+          "filename": "utt_0251.wav",
+          "original_utt": 251,
+          "text": "Le char de service est prêt au stationnement.",
+          "path": "systeme_statut/utt_0251.wav"
+        },
+        {
+          "filename": "utt_0252.wav",
+          "original_utt": 252,
+          "text": "Stationnement visiteur complet, suivez l’affichage.",
+          "path": "systeme_statut/utt_0252.wav"
+        },
+        {
+          "filename": "utt_0253.wav",
+          "original_utt": 253,
+          "text": "On magasine du matériel après la ronde.",
+          "path": "systeme_statut/utt_0253.wav"
+        },
+        {
+          "filename": "utt_0254.wav",
+          "original_utt": 254,
+          "text": "Le dépanneur est ouvert jusqu’à vingt-deux heures.",
+          "path": "systeme_statut/utt_0254.wav"
+        },
+        {
+          "filename": "utt_0255.wav",
+          "original_utt": 255,
+          "text": "Mets ta tuque, il fait frette à l’extérieur.",
+          "path": "systeme_statut/utt_0255.wav"
+        },
+        {
+          "filename": "utt_0256.wav",
+          "original_utt": 256,
+          "text": "La piasse est acceptée au guichet.",
+          "path": "systeme_statut/utt_0256.wav"
+        },
+        {
+          "filename": "utt_0257.wav",
+          "original_utt": 257,
+          "text": "Souliers de sécurité obligatoires en atelier.",
+          "path": "systeme_statut/utt_0257.wav"
+        },
+        {
+          "filename": "utt_0259.wav",
+          "original_utt": 259,
+          "text": "Merci, c’est correct, on continue.",
+          "path": "systeme_statut/utt_0259.wav"
+        },
+        {
+          "filename": "utt_0393.wav",
+          "original_utt": 393,
+          "text": "Merci, rapport complet.",
+          "path": "systeme_statut/utt_0393.wav"
+        },
+        {
+          "filename": "utt_0394.wav",
+          "original_utt": 394,
+          "text": "Merci, mesures valides.",
+          "path": "systeme_statut/utt_0394.wav"
+        },
+        {
+          "filename": "utt_0395.wav",
+          "original_utt": 395,
+          "text": "Merci, accès rétabli.",
+          "path": "systeme_statut/utt_0395.wav"
+        },
+        {
+          "filename": "utt_0396.wav",
+          "original_utt": 396,
+          "text": "Merci, consigne retirée.",
+          "path": "systeme_statut/utt_0396.wav"
+        },
+        {
+          "filename": "utt_0397.wav",
+          "original_utt": 397,
+          "text": "Merci, trajet terminé.",
+          "path": "systeme_statut/utt_0397.wav"
+        },
+        {
+          "filename": "utt_0398.wav",
+          "original_utt": 398,
+          "text": "Merci, présence confirmée.",
+          "path": "systeme_statut/utt_0398.wav"
+        },
+        {
+          "filename": "utt_0399.wav",
+          "original_utt": 399,
+          "text": "Merci, alerte acquittée.",
+          "path": "systeme_statut/utt_0399.wav"
+        },
+        {
+          "filename": "utt_0400.wav",
+          "original_utt": 400,
+          "text": "Merci, mission clôturée.",
+          "path": "systeme_statut/utt_0400.wav"
+        }
+      ]
+    },
+    "music": {
+      "description": "Albums musicaux convertis en 44kHz stéréo",
+      "album_count": 8,
+      "total_tracks": 95,
+      "albums": [
+        {
+          "album_name": "Aphex Twin - Drukqs",
+          "original_path": "Aphex Twin - Drukqs",
+          "track_count": 30,
+          "tracks": [
+            {
+              "filename": "d2t12 Aphex Twin - Afx237 V.wav",
+              "original_name": "d2t12 Aphex Twin - Afx237 V.7.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t12 Aphex Twin - Afx237 V.wav"
+            },
+            {
+              "filename": "d1t05 Aphex Twin - Strotha .wav",
+              "original_name": "d1t05 Aphex Twin - Strotha Tynhe.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t05 Aphex Twin - Strotha .wav"
+            },
+            {
+              "filename": "d1t12 Aphex Twin - Orban Eq.wav",
+              "original_name": "d1t12 Aphex Twin - Orban Eq Trx4.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t12 Aphex Twin - Orban Eq.wav"
+            },
+            {
+              "filename": "d2t13 Aphex Twin - Ziggomat.wav",
+              "original_name": "d2t13 Aphex Twin - Ziggomatic 17.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t13 Aphex Twin - Ziggomat.wav"
+            },
+            {
+              "filename": "d1t14 Aphex Twin - Hy a Scu.wav",
+              "original_name": "d1t14 Aphex Twin - Hy a Scullyas Lyf a Dhagrow.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t14 Aphex Twin - Hy a Scu.wav"
+            },
+            {
+              "filename": "d2t15 Aphex Twin - Nanou2.wav",
+              "original_name": "d2t15 Aphex Twin - Nanou2.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t15 Aphex Twin - Nanou2.wav"
+            },
+            {
+              "filename": "d2t14 Aphex Twin - Beskhu3e.wav",
+              "original_name": "d2t14 Aphex Twin - Beskhu3epnm.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t14 Aphex Twin - Beskhu3e.wav"
+            },
+            {
+              "filename": "d1t08 Aphex Twin - Cock_Ver.wav",
+              "original_name": "d1t08 Aphex Twin - Cock_Ver10.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t08 Aphex Twin - Cock_Ver.wav"
+            },
+            {
+              "filename": "d2t01 Aphex Twin - 54 Cymru.wav",
+              "original_name": "d2t01 Aphex Twin - 54 Cymru Beats.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t01 Aphex Twin - 54 Cymru.wav"
+            },
+            {
+              "filename": "d2t08 Aphex Twin - Father.wav",
+              "original_name": "d2t08 Aphex Twin - Father.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t08 Aphex Twin - Father.wav"
+            },
+            {
+              "filename": "d1t10 Aphex Twin - Mt Saint.wav",
+              "original_name": "d1t10 Aphex Twin - Mt Saint Michel + Saint Michaels Mount.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t10 Aphex Twin - Mt Saint.wav"
+            },
+            {
+              "filename": "d2t06 Aphex Twin - Bit 4.wav",
+              "original_name": "d2t06 Aphex Twin - Bit 4.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t06 Aphex Twin - Bit 4.wav"
+            },
+            {
+              "filename": "d2t03 Aphex Twin - Lornader.wav",
+              "original_name": "d2t03 Aphex Twin - Lornaderek.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t03 Aphex Twin - Lornader.wav"
+            },
+            {
+              "filename": "d2t02 Aphex Twin - Btoum-Ro.wav",
+              "original_name": "d2t02 Aphex Twin - Btoum-Roumada.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t02 Aphex Twin - Btoum-Ro.wav"
+            },
+            {
+              "filename": "d1t01 Aphex Twin - Jynweyth.wav",
+              "original_name": "d1t01 Aphex Twin - Jynweythek.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t01 Aphex Twin - Jynweyth.wav"
+            },
+            {
+              "filename": "d1t11 Aphex Twin - Gwarek2.wav",
+              "original_name": "d1t11 Aphex Twin - Gwarek2.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t11 Aphex Twin - Gwarek2.wav"
+            },
+            {
+              "filename": "d2t11 Aphex Twin - Ruglen H.wav",
+              "original_name": "d2t11 Aphex Twin - Ruglen Holon.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t11 Aphex Twin - Ruglen H.wav"
+            },
+            {
+              "filename": "d2t10 Aphex Twin - Petiatil.wav",
+              "original_name": "d2t10 Aphex Twin - Petiatil Cx Htdui.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t10 Aphex Twin - Petiatil.wav"
+            },
+            {
+              "filename": "d2t05 Aphex Twin - Meltphac.wav",
+              "original_name": "d2t05 Aphex Twin - Meltphace 6.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t05 Aphex Twin - Meltphac.wav"
+            },
+            {
+              "filename": "d1t15 Aphex Twin - Kesson D.wav",
+              "original_name": "d1t15 Aphex Twin - Kesson Dalef.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t15 Aphex Twin - Kesson D.wav"
+            },
+            {
+              "filename": "d2t09 Aphex Twin - Taking C.wav",
+              "original_name": "d2t09 Aphex Twin - Taking Control.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t09 Aphex Twin - Taking C.wav"
+            },
+            {
+              "filename": "d1t09 Aphex Twin - Avril 14.wav",
+              "original_name": "d1t09 Aphex Twin - Avril 14th.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t09 Aphex Twin - Avril 14.wav"
+            },
+            {
+              "filename": "d1t07 Aphex Twin - Bbydhyon.wav",
+              "original_name": "d1t07 Aphex Twin - Bbydhyonchord.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t07 Aphex Twin - Bbydhyon.wav"
+            },
+            {
+              "filename": "d1t13 Aphex Twin - Aussois.wav",
+              "original_name": "d1t13 Aphex Twin - Aussois.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t13 Aphex Twin - Aussois.wav"
+            },
+            {
+              "filename": "d2t04 Aphex Twin - QKThr.wav",
+              "original_name": "d2t04 Aphex Twin - QKThr.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t04 Aphex Twin - QKThr.wav"
+            },
+            {
+              "filename": "d1t03 Aphex Twin - Kladfvgb.wav",
+              "original_name": "d1t03 Aphex Twin - Kladfvgbung Micshk.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t03 Aphex Twin - Kladfvgb.wav"
+            },
+            {
+              "filename": "d1t04 Aphex Twin - Omgyjya-.wav",
+              "original_name": "d1t04 Aphex Twin - Omgyjya-Switch 7.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t04 Aphex Twin - Omgyjya-.wav"
+            },
+            {
+              "filename": "d2t07 Aphex Twin - Prep Gwa.wav",
+              "original_name": "d2t07 Aphex Twin - Prep Gwarlek 3b.flac",
+              "path": "music/Aphex Twin - Drukqs/d2t07 Aphex Twin - Prep Gwa.wav"
+            },
+            {
+              "filename": "d1t06 Aphex Twin - Gwely Me.wav",
+              "original_name": "d1t06 Aphex Twin - Gwely Mernans.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t06 Aphex Twin - Gwely Me.wav"
+            },
+            {
+              "filename": "d1t02 Aphex Twin - Vordhosb.wav",
+              "original_name": "d1t02 Aphex Twin - Vordhosbn.flac",
+              "path": "music/Aphex Twin - Drukqs/d1t02 Aphex Twin - Vordhosb.wav"
+            }
+          ]
+        },
+        {
+          "album_name": "Gotan Project - La Revancha del",
+          "original_path": "Gotan Project - La Revancha del Tango (20th anniversary edition)  - 2021 - WEB FLAC 16BIT   44.1khz EICHBAUM",
+          "track_count": 11,
+          "tracks": [
+            {
+              "filename": "01 - Queremos Paz.wav",
+              "original_name": "01 - Queremos Paz.flac",
+              "path": "music/Gotan Project - La Revancha del Tango/01 - Queremos Paz.wav"
+            },
+            {
+              "filename": "02 - Epoca.wav",
+              "original_name": "02 - Época.flac",
+              "path": "music/Gotan Project - La Revancha del Tango/02 - Epoca.wav"
+            },
+            {
+              "filename": "03 - Chunga's Revenge.wav",
+              "original_name": "03 - Chunga's Revenge.flac",
+              "path": "music/Gotan Project - La Revancha del Tango/03 - Chunga's Revenge.wav"
+            },
+            {
+              "filename": "04 - Tríptico.wav",
+              "original_name": "04 - Tríptico.flac",
+              "path": "music/Gotan Project - La Revancha del Tango/04 - Tríptico.wav"
+            },
+            {
+              "filename": "05 - Santa María (del Buen .wav",
+              "original_name": "05 - Santa María (del Buen Ayre).flac",
+              "path": "music/Gotan Project - La Revancha del Tango/05 - Santa María (del Buen .wav"
+            },
+            {
+              "filename": "06 - Una Música Brutal.wav",
+              "original_name": "06 - Una Música Brutal.flac",
+              "path": "music/Gotan Project - La Revancha del Tango/06 - Una Música Brutal.wav"
+            },
+            {
+              "filename": "07 - El Capitalismo Foráneo.wav",
+              "original_name": "07 - El Capitalismo Foráneo.flac",
+              "path": "music/Gotan Project - La Revancha del Tango/07 - El Capitalismo Foráneo.wav"
+            },
+            {
+              "filename": "08 - Last Tango In Paris.wav",
+              "original_name": "08 - Last Tango In Paris.flac",
+              "path": "music/Gotan Project - La Revancha del Tango/08 - Last Tango In Paris.wav"
+            },
+            {
+              "filename": "09 - La del Ruso.wav",
+              "original_name": "09 - La del Ruso.flac",
+              "path": "music/Gotan Project - La Revancha del Tango/09 - La del Ruso.wav"
+            },
+            {
+              "filename": "10 - Vuelvo al Sur.wav",
+              "original_name": "10 - Vuelvo al Sur.flac",
+              "path": "music/Gotan Project - La Revancha del Tango/10 - Vuelvo al Sur.wav"
+            },
+            {
+              "filename": "11 - Diciembre 2001 (Bonus .wav",
+              "original_name": "11 - Diciembre 2001 (Bonus Track).flac",
+              "path": "music/Gotan Project - La Revancha del Tango/11 - Diciembre 2001 (Bonus .wav"
+            }
+          ]
+        },
+        {
+          "album_name": "Moby-Essentials",
+          "original_path": "Moby-Essentials",
+          "track_count": 24,
+          "tracks": [
+            {
+              "filename": "01 - Moby - Porcelain (2014.wav",
+              "original_name": "01 - Moby - Porcelain (2014 Remastered Version).mp3",
+              "path": "music/Moby-Essentials/01 - Moby - Porcelain (2014.wav"
+            },
+            {
+              "filename": "02 - Moby - Go (Radio Edit).wav",
+              "original_name": "02 - Moby - Go (Radio Edit).mp3",
+              "path": "music/Moby-Essentials/02 - Moby - Go (Radio Edit).wav"
+            },
+            {
+              "filename": "03 - Moby - Power Is Taken.wav",
+              "original_name": "03 - Moby - Power Is Taken.mp3",
+              "path": "music/Moby-Essentials/03 - Moby - Power Is Taken.wav"
+            },
+            {
+              "filename": "04 - Moby - Natural Blues (.wav",
+              "original_name": "04 - Moby - Natural Blues (2014 Remastered Version).mp3",
+              "path": "music/Moby-Essentials/04 - Moby - Natural Blues (.wav"
+            },
+            {
+              "filename": "05 - Moby - We Are All Made.wav",
+              "original_name": "05 - Moby - We Are All Made of Stars.mp3",
+              "path": "music/Moby-Essentials/05 - Moby - We Are All Made.wav"
+            },
+            {
+              "filename": "06 - Moby - Move (2006 Rema.wav",
+              "original_name": "06 - Moby - Move (2006 Remastered Version).mp3",
+              "path": "music/Moby-Essentials/06 - Moby - Move (2006 Rema.wav"
+            },
+            {
+              "filename": "07 - Moby - Extreme Ways (B.wav",
+              "original_name": "07 - Moby - Extreme Ways (Bourne's Legacy).mp3",
+              "path": "music/Moby-Essentials/07 - Moby - Extreme Ways (B.wav"
+            },
+            {
+              "filename": "08 - Moby - Feeling so Real.wav",
+              "original_name": "08 - Moby - Feeling so Real.mp3",
+              "path": "music/Moby-Essentials/08 - Moby - Feeling so Real.wav"
+            },
+            {
+              "filename": "09 - Moby - Why Does My Hea.wav",
+              "original_name": "09 - Moby - Why Does My Heart Feel So Bad_ (2014 Remastered Version).mp3",
+              "path": "music/Moby-Essentials/09 - Moby - Why Does My Hea.wav"
+            },
+            {
+              "filename": "10 - Moby - South Side (201.wav",
+              "original_name": "10 - Moby - South Side (2014 Remastered Version).mp3",
+              "path": "music/Moby-Essentials/10 - Moby - South Side (201.wav"
+            },
+            {
+              "filename": "11 - Moby - Disco Lies.wav",
+              "original_name": "11 - Moby - Disco Lies.mp3",
+              "path": "music/Moby-Essentials/11 - Moby - Disco Lies.wav"
+            },
+            {
+              "filename": "12 - Moby - That's When I R.wav",
+              "original_name": "12 - Moby - That's When I Reach for My Revolver.mp3",
+              "path": "music/Moby-Essentials/12 - Moby - That's When I R.wav"
+            },
+            {
+              "filename": "13 - Moby - Next Is The E.wav",
+              "original_name": "13 - Moby - Next Is The E.mp3",
+              "path": "music/Moby-Essentials/13 - Moby - Next Is The E.wav"
+            },
+            {
+              "filename": "14 - Moby - Hymn.wav",
+              "original_name": "14 - Moby - Hymn.mp3",
+              "path": "music/Moby-Essentials/14 - Moby - Hymn.wav"
+            },
+            {
+              "filename": "15 - Moby - Bodyrock (2014 .wav",
+              "original_name": "15 - Moby - Bodyrock (2014 Remastered Version).mp3",
+              "path": "music/Moby-Essentials/15 - Moby - Bodyrock (2014 .wav"
+            },
+            {
+              "filename": "16 - Moby - Everytime You T.wav",
+              "original_name": "16 - Moby - Everytime You Touch Me.mp3",
+              "path": "music/Moby-Essentials/16 - Moby - Everytime You T.wav"
+            },
+            {
+              "filename": "17 - Moby - In This World.wav",
+              "original_name": "17 - Moby - In This World.mp3",
+              "path": "music/Moby-Essentials/17 - Moby - In This World.wav"
+            },
+            {
+              "filename": "18 - Moby - Lift Me Up.wav",
+              "original_name": "18 - Moby - Lift Me Up.mp3",
+              "path": "music/Moby-Essentials/18 - Moby - Lift Me Up.wav"
+            },
+            {
+              "filename": "19 - Moby - Wait for Me.wav",
+              "original_name": "19 - Moby - Wait for Me.mp3",
+              "path": "music/Moby-Essentials/19 - Moby - Wait for Me.wav"
+            },
+            {
+              "filename": "20 - Moby - Honey (2014 Rem.wav",
+              "original_name": "20 - Moby - Honey (2014 Remastered Version).mp3",
+              "path": "music/Moby-Essentials/20 - Moby - Honey (2014 Rem.wav"
+            },
+            {
+              "filename": "21 - Moby - Drop A Beat.wav",
+              "original_name": "21 - Moby - Drop A Beat.mp3",
+              "path": "music/Moby-Essentials/21 - Moby - Drop A Beat.wav"
+            },
+            {
+              "filename": "22 - Moby - A Case For Sham.wav",
+              "original_name": "22 - Moby - A Case For Shame [with Cold Specks] (feat. Cold Specks).mp3",
+              "path": "music/Moby-Essentials/22 - Moby - A Case For Sham.wav"
+            },
+            {
+              "filename": "23 - Moby - Walk with Me.wav",
+              "original_name": "23 - Moby - Walk with Me.mp3",
+              "path": "music/Moby-Essentials/23 - Moby - Walk with Me.wav"
+            },
+            {
+              "filename": "24 - Moby - Are You Lost in.wav",
+              "original_name": "24 - Moby - Are You Lost in the World Like Me_.mp3",
+              "path": "music/Moby-Essentials/24 - Moby - Are You Lost in.wav"
+            }
+          ]
+        },
+        {
+          "album_name": "Thievery Corporation - 2000 - M",
+          "original_path": "Thievery Corporation - 2000 - Mirror Conspiracy",
+          "track_count": 15,
+          "tracks": [
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Guide For I & I.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Indra.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Illumination.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Samba Tranquille.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Le Monde.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Focus On Sight.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Tomorrow.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Bario Alto.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - So Com Voce.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - The Hong Kong Triad.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Shadows of Ourselves.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Treasures.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - The Mirror Conspiracy.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Air Batucada.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            },
+            {
+              "filename": "Thievery Corporation - Mirr.wav",
+              "original_name": "Thievery Corporation - Mirror Conspiracy - Lebanese Blonde.flac",
+              "path": "music/Thievery Corporation - 2000 - Mirror Conspiracy/Thievery Corporation - Mirr.wav"
+            }
+          ]
+        },
+        {
+          "album_name": "[1999] Californication",
+          "original_path": "[1999] Californication",
+          "track_count": 15,
+          "tracks": [
+            {
+              "filename": "01 - Around the World.wav",
+              "original_name": "01 - Around the World.flac",
+              "path": "music/[1999] Californication/01 - Around the World.wav"
+            },
+            {
+              "filename": "02 - Parallel Universe.wav",
+              "original_name": "02 - Parallel Universe.flac",
+              "path": "music/[1999] Californication/02 - Parallel Universe.wav"
+            },
+            {
+              "filename": "03 - Scar Tissue.wav",
+              "original_name": "03 - Scar Tissue.flac",
+              "path": "music/[1999] Californication/03 - Scar Tissue.wav"
+            },
+            {
+              "filename": "04 - Otherside.wav",
+              "original_name": "04 - Otherside.flac",
+              "path": "music/[1999] Californication/04 - Otherside.wav"
+            },
+            {
+              "filename": "05 - Get on Top.wav",
+              "original_name": "05 - Get on Top.flac",
+              "path": "music/[1999] Californication/05 - Get on Top.wav"
+            },
+            {
+              "filename": "06 - Californication.wav",
+              "original_name": "06 - Californication.flac",
+              "path": "music/[1999] Californication/06 - Californication.wav"
+            },
+            {
+              "filename": "07 - Easily.wav",
+              "original_name": "07 - Easily.flac",
+              "path": "music/[1999] Californication/07 - Easily.wav"
+            },
+            {
+              "filename": "08 - Porcelain.wav",
+              "original_name": "08 - Porcelain.flac",
+              "path": "music/[1999] Californication/08 - Porcelain.wav"
+            },
+            {
+              "filename": "09 - Emit Remmus.wav",
+              "original_name": "09 - Emit Remmus.flac",
+              "path": "music/[1999] Californication/09 - Emit Remmus.wav"
+            },
+            {
+              "filename": "10 - I Like Dirt.wav",
+              "original_name": "10 - I Like Dirt.flac",
+              "path": "music/[1999] Californication/10 - I Like Dirt.wav"
+            },
+            {
+              "filename": "11 - This Velvet Glove.wav",
+              "original_name": "11 - This Velvet Glove.flac",
+              "path": "music/[1999] Californication/11 - This Velvet Glove.wav"
+            },
+            {
+              "filename": "12 - Savior.wav",
+              "original_name": "12 - Savior.flac",
+              "path": "music/[1999] Californication/12 - Savior.wav"
+            },
+            {
+              "filename": "13 - Purple Stain.wav",
+              "original_name": "13 - Purple Stain.flac",
+              "path": "music/[1999] Californication/13 - Purple Stain.wav"
+            },
+            {
+              "filename": "14 - Right on Time.wav",
+              "original_name": "14 - Right on Time.flac",
+              "path": "music/[1999] Californication/14 - Right on Time.wav"
+            },
+            {
+              "filename": "15 - Road Trippin'.wav",
+              "original_name": "15 - Road Trippinâ€™.flac",
+              "path": "music/[1999] Californication/15 - Road Trippin'.wav"
+            }
+          ]
+        },
+        {
+          "album_name": "Charlotte Cardin - Une semaine à Paris",
+          "original_path": "Charlotte Cardin - Une semaine à Paris - 2023 - WEB FLAC 16BITS 44.1KHZ-EICHBAUM",
+          "track_count": 4,
+          "tracks": [
+            {
+              "filename": "t-096.wav",
+              "original_name": "01. Real Love.flac",
+              "path": "music/Charlotte Cardin - Une semaine à Paris/t-096.wav"
+            },
+            {
+              "filename": "t-097.wav",
+              "original_name": "02. Confetti (VF).flac",
+              "path": "music/Charlotte Cardin - Une semaine à Paris/t-097.wav"
+            },
+            {
+              "filename": "t-098.wav",
+              "original_name": "03. Feel Good.flac",
+              "path": "music/Charlotte Cardin - Une semaine à Paris/t-098.wav"
+            },
+            {
+              "filename": "t-099.wav",
+              "original_name": "04. Un peu trop.flac",
+              "path": "music/Charlotte Cardin - Une semaine à Paris/t-099.wav"
+            }
+          ]
+        },
+        {
+          "album_name": "Charlotte Cardin - 99 Nights",
+          "original_path": "Charlotte Cardin - 99 Nights - 2023 - WEB FLAC 16BITS 44.1KHZ-EICHBAUM",
+          "track_count": 12,
+          "tracks": [
+            {
+              "filename": "t-100.wav",
+              "original_name": "01. Puppy.flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-100.wav"
+            },
+            {
+              "filename": "t-101.wav",
+              "original_name": "02. Enfer.flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-101.wav"
+            },
+            {
+              "filename": "t-102.wav",
+              "original_name": "03. Confetti.flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-102.wav"
+            },
+            {
+              "filename": "t-103.wav",
+              "original_name": "04. Way Back.flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-103.wav"
+            },
+            {
+              "filename": "t-104.wav",
+              "original_name": "05. Jim Carrey.flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-104.wav"
+            },
+            {
+              "filename": "t-105.wav",
+              "original_name": "06. How High(Explicit).flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-105.wav"
+            },
+            {
+              "filename": "t-106.wav",
+              "original_name": "07. Somebody First(Explicit).flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-106.wav"
+            },
+            {
+              "filename": "t-107.wav",
+              "original_name": "08. 99 Nights(Explicit).flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-107.wav"
+            },
+            {
+              "filename": "t-108.wav",
+              "original_name": "09. Someone I Could Love.flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-108.wav"
+            },
+            {
+              "filename": "t-109.wav",
+              "original_name": "10. Looping(Explicit).flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-109.wav"
+            },
+            {
+              "filename": "t-110.wav",
+              "original_name": "11. Daddy's a Psycho(Explicit).flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-110.wav"
+            },
+            {
+              "filename": "t-111.wav",
+              "original_name": "12. Next To You.flac",
+              "path": "music/Charlotte Cardin - 99 Nights/t-111.wav"
+            }
+          ]
+        },
+        {
+          "album_name": "Charlotte Cardin - Phoenix",
+          "original_path": "Charlotte Cardin - Phoenix- 2021 - WEB FLAC 16BIT   44.1khz EICHBAUM",
+          "track_count": 13,
+          "tracks": [
+            {
+              "filename": "t-112.wav",
+              "original_name": "01 - Phoenix.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-112.wav"
+            },
+            {
+              "filename": "t-113.wav",
+              "original_name": "02 - Passive Aggressive.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-113.wav"
+            },
+            {
+              "filename": "t-114.wav",
+              "original_name": "03 - Anyone Who Loves Me.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-114.wav"
+            },
+            {
+              "filename": "t-115.wav",
+              "original_name": "04 - Meaningless.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-115.wav"
+            },
+            {
+              "filename": "t-116.wav",
+              "original_name": "05 - Daddy.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-116.wav"
+            },
+            {
+              "filename": "t-117.wav",
+              "original_name": "06 - Sex To Me.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-117.wav"
+            },
+            {
+              "filename": "t-118.wav",
+              "original_name": "07 - Good Girl.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-118.wav"
+            },
+            {
+              "filename": "t-119.wav",
+              "original_name": "08 - Sad Girl.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-119.wav"
+            },
+            {
+              "filename": "t-120.wav",
+              "original_name": "09 - XOXO.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-120.wav"
+            },
+            {
+              "filename": "t-121.wav",
+              "original_name": "10 - Oceans.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-121.wav"
+            },
+            {
+              "filename": "t-122.wav",
+              "original_name": "11 - Sun Goes Down (Buddy).flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-122.wav"
+            },
+            {
+              "filename": "t-123.wav",
+              "original_name": "12 - Romeo.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-123.wav"
+            },
+            {
+              "filename": "t-124.wav",
+              "original_name": "13 - Je quitte.flac",
+              "path": "music/Charlotte Cardin - Phoenix/t-124.wav"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "all_files": [
+    {
+      "filename": "utt_0001.wav",
+      "category": "alertes_pti",
+      "text": "Alerte PTI déclenchée, restez immobile, l’équipe arrive.",
+      "path": "alertes_pti/utt_0001.wav"
+    },
+    {
+      "filename": "utt_0002.wav",
+      "category": "alertes_pti",
+      "text": "Perte de mouvement détectée, confirmez « OK » dans les dix secondes.",
+      "path": "alertes_pti/utt_0002.wav"
+    },
+    {
+      "filename": "utt_0003.wav",
+      "category": "alertes_pti",
+      "text": "Bouton d’urgence pressé, canal prioritaire ouvert.",
+      "path": "alertes_pti/utt_0003.wav"
+    },
+    {
+      "filename": "utt_0004.wav",
+      "category": "alertes_pti",
+      "text": "Absence de réponse, levée de doute en cours.",
+      "path": "alertes_pti/utt_0004.wav"
+    },
+    {
+      "filename": "utt_0005.wav",
+      "category": "alertes_pti",
+      "text": "Chute suspectée, gardez votre calme, secours en route.",
+      "path": "alertes_pti/utt_0005.wav"
+    },
+    {
+      "filename": "utt_0021.wav",
+      "category": "securite_evacuation",
+      "text": "Évacuation immédiate demandée, suivez le marquage lumineux.",
+      "path": "securite_evacuation/utt_0021.wav"
+    },
+    {
+      "filename": "utt_0022.wav",
+      "category": "securite_evacuation",
+      "text": "Présence de fumée au niveau deux, portez le masque.",
+      "path": "securite_evacuation/utt_0022.wav"
+    },
+    {
+      "filename": "utt_0023.wav",
+      "category": "securite_evacuation",
+      "text": "Risque électrique détecté, coupez l’alimentation.",
+      "path": "securite_evacuation/utt_0023.wav"
+    },
+    {
+      "filename": "utt_0024.wav",
+      "category": "securite_evacuation",
+      "text": "Fuite possible de gaz, éloignez-vous et ventilez la zone.",
+      "path": "securite_evacuation/utt_0024.wav"
+    },
+    {
+      "filename": "utt_0025.wav",
+      "category": "securite_evacuation",
+      "text": "Sol glissant signalé, avancez prudemment.",
+      "path": "securite_evacuation/utt_0025.wav"
+    },
+    {
+      "filename": "utt_0026.wav",
+      "category": "securite_evacuation",
+      "text": "Niveau sonore élevé, mettez la protection auditive.",
+      "path": "securite_evacuation/utt_0026.wav"
+    },
+    {
+      "filename": "utt_0027.wav",
+      "category": "securite_evacuation",
+      "text": "Température ambiante élevée, hydratez-vous.",
+      "path": "securite_evacuation/utt_0027.wav"
+    },
+    {
+      "filename": "utt_0028.wav",
+      "category": "securite_evacuation",
+      "text": "Objets en hauteur instables, sécurisez avant de passer.",
+      "path": "securite_evacuation/utt_0028.wav"
+    },
+    {
+      "filename": "utt_0029.wav",
+      "category": "securite_evacuation",
+      "text": "Travaux en hauteur en cours, accès interdit sans harnais.",
+      "path": "securite_evacuation/utt_0029.wav"
+    },
+    {
+      "filename": "utt_0030.wav",
+      "category": "securite_evacuation",
+      "text": "Zone de levage active, laissez la priorité aux chariots.",
+      "path": "securite_evacuation/utt_0030.wav"
+    },
+    {
+      "filename": "utt_0031.wav",
+      "category": "securite_evacuation",
+      "text": "Porte coupe-feu déverrouillée pour évacuation.",
+      "path": "securite_evacuation/utt_0031.wav"
+    },
+    {
+      "filename": "utt_0032.wav",
+      "category": "securite_evacuation",
+      "text": "Exercice de sécurité dans quinze minutes.",
+      "path": "securite_evacuation/utt_0032.wav"
+    },
+    {
+      "filename": "utt_0033.wav",
+      "category": "securite_evacuation",
+      "text": "Fin d’alerte, retour progressif à la normale.",
+      "path": "securite_evacuation/utt_0033.wav"
+    },
+    {
+      "filename": "utt_0034.wav",
+      "category": "securite_evacuation",
+      "text": "Serrage obligatoire du casque et des jugulaires.",
+      "path": "securite_evacuation/utt_0034.wav"
+    },
+    {
+      "filename": "utt_0035.wav",
+      "category": "securite_evacuation",
+      "text": "Gants anti-coupure requis dans l’atelier.",
+      "path": "securite_evacuation/utt_0035.wav"
+    },
+    {
+      "filename": "utt_0036.wav",
+      "category": "securite_evacuation",
+      "text": "Lunettes de sécurité obligatoires en zone machine.",
+      "path": "securite_evacuation/utt_0036.wav"
+    },
+    {
+      "filename": "utt_0037.wav",
+      "category": "securite_evacuation",
+      "text": "Vestiaire d’urgence ouvert au rez-de-chaussée.",
+      "path": "securite_evacuation/utt_0037.wav"
+    },
+    {
+      "filename": "utt_0039.wav",
+      "category": "securite_evacuation",
+      "text": "Trousse de premiers soins à l’accueil.",
+      "path": "securite_evacuation/utt_0039.wav"
+    },
+    {
+      "filename": "utt_0040.wav",
+      "category": "securite_evacuation",
+      "text": "Point chaud détecté, éloignez tout matériau combustible.",
+      "path": "securite_evacuation/utt_0040.wav"
+    },
+    {
+      "filename": "utt_0046.wav",
+      "category": "temps_unites",
+      "text": "Consigne énergie appliquée, vérifiez les cadenas.",
+      "path": "temps_unites/utt_0046.wav"
+    },
+    {
+      "filename": "utt_0047.wav",
+      "category": "temps_unites",
+      "text": "Remise sous tension autorisée, restez vigilant.",
+      "path": "temps_unites/utt_0047.wav"
+    },
+    {
+      "filename": "utt_0048.wav",
+      "category": "temps_unites",
+      "text": "Échantillon requis, photo de contrôle à envoyer.",
+      "path": "temps_unites/utt_0048.wav"
+    },
+    {
+      "filename": "utt_0049.wav",
+      "category": "temps_unites",
+      "text": "Rapport d’activité attendu à la fin du créneau.",
+      "path": "temps_unites/utt_0049.wav"
+    },
+    {
+      "filename": "utt_0050.wav",
+      "category": "temps_unites",
+      "text": "Commentaire requis sur l’intervention en zone C.",
+      "path": "temps_unites/utt_0050.wav"
+    },
+    {
+      "filename": "utt_0052.wav",
+      "category": "temps_unites",
+      "text": "Montez par l’escalier A jusqu’au niveau trois.",
+      "path": "temps_unites/utt_0052.wav"
+    },
+    {
+      "filename": "utt_0053.wav",
+      "category": "temps_unites",
+      "text": "Ascenseur en maintenance, utilisez l’escalier B.",
+      "path": "temps_unites/utt_0053.wav"
+    },
+    {
+      "filename": "utt_0054.wav",
+      "category": "temps_unites",
+      "text": "Accès restreint, scannez votre badge au portique deux.",
+      "path": "temps_unites/utt_0054.wav"
+    },
+    {
+      "filename": "utt_0056.wav",
+      "category": "temps_unites",
+      "text": "Zone quatre saturée, détour recommandé par le corridor C.",
+      "path": "temps_unites/utt_0056.wav"
+    },
+    {
+      "filename": "utt_0058.wav",
+      "category": "temps_unites",
+      "text": "Marquage lumineux actif, suivez les flèches bleues.",
+      "path": "temps_unites/utt_0058.wav"
+    },
+    {
+      "filename": "utt_0060.wav",
+      "category": "temps_unites",
+      "text": "Station d’hydratation tout droit à vingt mètres.",
+      "path": "temps_unites/utt_0060.wav"
+    },
+    {
+      "filename": "utt_0061.wav",
+      "category": "temps_unites",
+      "text": "Couloir D momentanément fermé, empruntez la galerie technique.",
+      "path": "temps_unites/utt_0061.wav"
+    },
+    {
+      "filename": "utt_0062.wav",
+      "category": "temps_unites",
+      "text": "Passerelle suspendue ouverte, avancez prudemment.",
+      "path": "temps_unites/utt_0062.wav"
+    },
+    {
+      "filename": "utt_0063.wav",
+      "category": "temps_unites",
+      "text": "Zone entrepôt, priorité aux chariots en mouvement.",
+      "path": "temps_unites/utt_0063.wav"
+    },
+    {
+      "filename": "utt_0064.wav",
+      "category": "temps_unites",
+      "text": "Quai de livraison trois, avancez jusqu’au marquage jaune.",
+      "path": "temps_unites/utt_0064.wav"
+    },
+    {
+      "filename": "utt_0066.wav",
+      "category": "temps_unites",
+      "text": "Accueil client au rez-de-chaussée, aile est.",
+      "path": "temps_unites/utt_0066.wav"
+    },
+    {
+      "filename": "utt_0068.wav",
+      "category": "temps_unites",
+      "text": "Localisation mise à jour, vous êtes près de l’ascenseur A.",
+      "path": "temps_unites/utt_0068.wav"
+    },
+    {
+      "filename": "utt_0069.wav",
+      "category": "temps_unites",
+      "text": "Balise de proximité détectée, tournez à droite.",
+      "path": "temps_unites/utt_0069.wav"
+    },
+    {
+      "filename": "utt_0070.wav",
+      "category": "temps_unites",
+      "text": "Vous quittez la zone couverte, revenez vers la balise la plus proche.",
+      "path": "temps_unites/utt_0070.wav"
+    },
+    {
+      "filename": "utt_0071.wav",
+      "category": "temps_unites",
+      "text": "Issue d’urgence à dix mètres sur votre gauche.",
+      "path": "temps_unites/utt_0071.wav"
+    },
+    {
+      "filename": "utt_0072.wav",
+      "category": "temps_unites",
+      "text": "Escalier de service derrière la porte grise.",
+      "path": "temps_unites/utt_0072.wav"
+    },
+    {
+      "filename": "utt_0073.wav",
+      "category": "temps_unites",
+      "text": "Couloir étroit, marchez en file indienne.",
+      "path": "temps_unites/utt_0073.wav"
+    },
+    {
+      "filename": "utt_0074.wav",
+      "category": "temps_unites",
+      "text": "Aire de repos au bout du corridor.",
+      "path": "temps_unites/utt_0074.wav"
+    },
+    {
+      "filename": "utt_0075.wav",
+      "category": "temps_unites",
+      "text": "Zone silencieuse, mettez votre cellulaire en vibreur.",
+      "path": "temps_unites/utt_0075.wav"
+    },
+    {
+      "filename": "utt_0076.wav",
+      "category": "temps_unites",
+      "text": "Stationnement visiteurs niveau P-1.",
+      "path": "temps_unites/utt_0076.wav"
+    },
+    {
+      "filename": "utt_0077.wav",
+      "category": "temps_unites",
+      "text": "Guichet sécurité au palier intermédiaire.",
+      "path": "temps_unites/utt_0077.wav"
+    },
+    {
+      "filename": "utt_0078.wav",
+      "category": "temps_unites",
+      "text": "Lecteur de cartes à hauteur de la poignée.",
+      "path": "temps_unites/utt_0078.wav"
+    },
+    {
+      "filename": "utt_0079.wav",
+      "category": "temps_unites",
+      "text": "Badge accepté, la porte va s’ouvrir.",
+      "path": "temps_unites/utt_0079.wav"
+    },
+    {
+      "filename": "utt_0080.wav",
+      "category": "temps_unites",
+      "text": "Badge refusé, réessayez ou contactez la sécurité.",
+      "path": "temps_unites/utt_0080.wav"
+    },
+    {
+      "filename": "utt_0081.wav",
+      "category": "temps_unites",
+      "text": "Alarme compresseur, secteur nord.",
+      "path": "temps_unites/utt_0081.wav"
+    },
+    {
+      "filename": "utt_0083.wav",
+      "category": "temps_unites",
+      "text": "Chaudière en veille, relance autorisée.",
+      "path": "temps_unites/utt_0083.wav"
+    },
+    {
+      "filename": "utt_0084.wav",
+      "category": "temps_unites",
+      "text": "Onduleur en bypass, vérifiez l’alimentation.",
+      "path": "temps_unites/utt_0084.wav"
+    },
+    {
+      "filename": "utt_0085.wav",
+      "category": "temps_unites",
+      "text": "Vanne V-12 à demi ouverte, remettre en nominal.",
+      "path": "temps_unites/utt_0085.wav"
+    },
+    {
+      "filename": "utt_0086.wav",
+      "category": "temps_unites",
+      "text": "Filtre F-21 encrassé, remplacez et consignez la mesure.",
+      "path": "temps_unites/utt_0086.wav"
+    },
+    {
+      "filename": "utt_0087.wav",
+      "category": "temps_unites",
+      "text": "Capteur C-14 hors plage, recalibrez maintenant.",
+      "path": "temps_unites/utt_0087.wav"
+    },
+    {
+      "filename": "utt_0088.wav",
+      "category": "temps_unites",
+      "text": "Test de continuité demandé sur le circuit secondaire.",
+      "path": "temps_unites/utt_0088.wav"
+    },
+    {
+      "filename": "utt_0089.wav",
+      "category": "temps_unites",
+      "text": "Lecture de pression requise au collecteur principal.",
+      "path": "temps_unites/utt_0089.wav"
+    },
+    {
+      "filename": "utt_0090.wav",
+      "category": "temps_unites",
+      "text": "Température acceptable, maintenez le régime actuel.",
+      "path": "temps_unites/utt_0090.wav"
+    },
+    {
+      "filename": "utt_0091.wav",
+      "category": "temps_unites",
+      "text": "Consultez la fiche de sécurité avant manipulation.",
+      "path": "temps_unites/utt_0091.wav"
+    },
+    {
+      "filename": "utt_0108.wav",
+      "category": "alertes_pti",
+      "text": "Relevé d’ouverture à six heures trente.",
+      "path": "alertes_pti/utt_0108.wav"
+    },
+    {
+      "filename": "utt_0109.wav",
+      "category": "alertes_pti",
+      "text": "Fin de quart à dix-huit heures.",
+      "path": "alertes_pti/utt_0109.wav"
+    },
+    {
+      "filename": "utt_0111.wav",
+      "category": "alertes_pti",
+      "text": "La température est de vingt-deux degrés Celsius.",
+      "path": "alertes_pti/utt_0111.wav"
+    },
+    {
+      "filename": "utt_0112.wav",
+      "category": "alertes_pti",
+      "text": "La pression monte à cent kilopascals.",
+      "path": "alertes_pti/utt_0112.wav"
+    },
+    {
+      "filename": "utt_0113.wav",
+      "category": "alertes_pti",
+      "text": "L’humidité est de quarante-cinq pour cent.",
+      "path": "alertes_pti/utt_0113.wav"
+    },
+    {
+      "filename": "utt_0116.wav",
+      "category": "alertes_pti",
+      "text": "La distance est d’environ deux kilomètres.",
+      "path": "alertes_pti/utt_0116.wav"
+    },
+    {
+      "filename": "utt_0117.wav",
+      "category": "alertes_pti",
+      "text": "La charge admissible est de cinq cents kilogrammes.",
+      "path": "alertes_pti/utt_0117.wav"
+    },
+    {
+      "filename": "utt_0118.wav",
+      "category": "alertes_pti",
+      "text": "La tension mesurée est de deux cent trente volts.",
+      "path": "alertes_pti/utt_0118.wav"
+    },
+    {
+      "filename": "utt_0119.wav",
+      "category": "alertes_pti",
+      "text": "Le courant nominal est de dix ampères.",
+      "path": "alertes_pti/utt_0119.wav"
+    },
+    {
+      "filename": "utt_0120.wav",
+      "category": "alertes_pti",
+      "text": "La vitesse moyenne est de cinquante kilomètres à l’heure.",
+      "path": "alertes_pti/utt_0120.wav"
+    },
+    {
+      "filename": "utt_0141.wav",
+      "category": "operations_techniques",
+      "text": "Début inspection visuelle du convoyeur.",
+      "path": "operations_techniques/utt_0141.wav"
+    },
+    {
+      "filename": "utt_0142.wav",
+      "category": "operations_techniques",
+      "text": "Contrôlez la tension de la courroie.",
+      "path": "operations_techniques/utt_0142.wav"
+    },
+    {
+      "filename": "utt_0143.wav",
+      "category": "operations_techniques",
+      "text": "Vérifiez le niveau d’huile du réducteur.",
+      "path": "operations_techniques/utt_0143.wav"
+    },
+    {
+      "filename": "utt_0144.wav",
+      "category": "operations_techniques",
+      "text": "Replacez le capot de protection et verrouillez.",
+      "path": "operations_techniques/utt_0144.wav"
+    },
+    {
+      "filename": "utt_0145.wav",
+      "category": "operations_techniques",
+      "text": "Réarmez l’arrêt d’urgence après contrôle.",
+      "path": "operations_techniques/utt_0145.wav"
+    },
+    {
+      "filename": "utt_0146.wav",
+      "category": "operations_techniques",
+      "text": "Consignez la valeur de vibration en millimètres par seconde.",
+      "path": "operations_techniques/utt_0146.wav"
+    },
+    {
+      "filename": "utt_0147.wav",
+      "category": "operations_techniques",
+      "text": "Mesurez le jeu axial, notez la lecture.",
+      "path": "operations_techniques/utt_0147.wav"
+    },
+    {
+      "filename": "utt_0148.wav",
+      "category": "operations_techniques",
+      "text": "Serrez les connecteurs avant remise sous tension.",
+      "path": "operations_techniques/utt_0148.wav"
+    },
+    {
+      "filename": "utt_0149.wav",
+      "category": "operations_techniques",
+      "text": "Test de redémarrage autorisé, restez vigilant.",
+      "path": "operations_techniques/utt_0149.wav"
+    },
+    {
+      "filename": "utt_0150.wav",
+      "category": "operations_techniques",
+      "text": "Validation qualité requise avant remise au client.",
+      "path": "operations_techniques/utt_0150.wav"
+    },
+    {
+      "filename": "utt_0156.wav",
+      "category": "navigation_indoor",
+      "text": "Changez de canal, basculez sur canal deux.",
+      "path": "navigation_indoor/utt_0156.wav"
+    },
+    {
+      "filename": "utt_0158.wav",
+      "category": "navigation_indoor",
+      "text": "Audio faible, parlez plus près du micro.",
+      "path": "navigation_indoor/utt_0158.wav"
+    },
+    {
+      "filename": "utt_0160.wav",
+      "category": "navigation_indoor",
+      "text": "Document joint disponible dans l’application.",
+      "path": "navigation_indoor/utt_0160.wav"
+    },
+    {
+      "filename": "utt_0163.wav",
+      "category": "navigation_indoor",
+      "text": "La fin de semaine commence vendredi soir.",
+      "path": "navigation_indoor/utt_0163.wav"
+    },
+    {
+      "filename": "utt_0165.wav",
+      "category": "navigation_indoor",
+      "text": "Stationnement complet, prends l’entrée visiteurs.",
+      "path": "navigation_indoor/utt_0165.wav"
+    },
+    {
+      "filename": "utt_0166.wav",
+      "category": "navigation_indoor",
+      "text": "Mets ton chandail haute visibilité en zone logistique.",
+      "path": "navigation_indoor/utt_0166.wav"
+    },
+    {
+      "filename": "utt_0168.wav",
+      "category": "navigation_indoor",
+      "text": "Le chalet est fermé, accès interdit aujourd’hui.",
+      "path": "navigation_indoor/utt_0168.wav"
+    },
+    {
+      "filename": "utt_0170.wav",
+      "category": "navigation_indoor",
+      "text": "Merci, c’est correct, bon travail!",
+      "path": "navigation_indoor/utt_0170.wav"
+    },
+    {
+      "filename": "utt_0172.wav",
+      "category": "navigation_indoor",
+      "text": "Chaudière en veille, température stable.",
+      "path": "navigation_indoor/utt_0172.wav"
+    },
+    {
+      "filename": "utt_0173.wav",
+      "category": "navigation_indoor",
+      "text": "Onduleur normal, tension nominale.",
+      "path": "navigation_indoor/utt_0173.wav"
+    },
+    {
+      "filename": "utt_0174.wav",
+      "category": "navigation_indoor",
+      "text": "Batterie faible, branchez au chargeur dès que possible.",
+      "path": "navigation_indoor/utt_0174.wav"
+    },
+    {
+      "filename": "utt_0175.wav",
+      "category": "navigation_indoor",
+      "text": "Capteur remplacé hier, calibration requise.",
+      "path": "navigation_indoor/utt_0175.wav"
+    },
+    {
+      "filename": "utt_0176.wav",
+      "category": "navigation_indoor",
+      "text": "Mise à jour de l’application réussie.",
+      "path": "navigation_indoor/utt_0176.wav"
+    },
+    {
+      "filename": "utt_0178.wav",
+      "category": "navigation_indoor",
+      "text": "Synchronisation terminée, données sauvegardées.",
+      "path": "navigation_indoor/utt_0178.wav"
+    },
+    {
+      "filename": "utt_0179.wav",
+      "category": "navigation_indoor",
+      "text": "Inventaire à lancer demain matin.",
+      "path": "navigation_indoor/utt_0179.wav"
+    },
+    {
+      "filename": "utt_0180.wav",
+      "category": "navigation_indoor",
+      "text": "Livraison retardée, replanifiez après quinze heures.",
+      "path": "navigation_indoor/utt_0180.wav"
+    },
+    {
+      "filename": "utt_0182.wav",
+      "category": "operations_techniques",
+      "text": "Laissez la priorité aux chariots en approche.",
+      "path": "operations_techniques/utt_0182.wav"
+    },
+    {
+      "filename": "utt_0183.wav",
+      "category": "operations_techniques",
+      "text": "Marchez côté droit du couloir.",
+      "path": "operations_techniques/utt_0183.wav"
+    },
+    {
+      "filename": "utt_0189.wav",
+      "category": "operations_techniques",
+      "text": "Désinfectez vos mains avant d’entrer.",
+      "path": "operations_techniques/utt_0189.wav"
+    },
+    {
+      "filename": "utt_0190.wav",
+      "category": "operations_techniques",
+      "text": "Respectez les consignes affichées.",
+      "path": "operations_techniques/utt_0190.wav"
+    },
+    {
+      "filename": "utt_0191.wav",
+      "category": "operations_techniques",
+      "text": "Zéro incident déclaré sur le dernier quart.",
+      "path": "operations_techniques/utt_0191.wav"
+    },
+    {
+      "filename": "utt_0193.wav",
+      "category": "operations_techniques",
+      "text": "Deux anomalies restent à diagnostiquer.",
+      "path": "operations_techniques/utt_0193.wav"
+    },
+    {
+      "filename": "utt_0195.wav",
+      "category": "operations_techniques",
+      "text": "Cinq alarmes filtrées automatiquement.",
+      "path": "operations_techniques/utt_0195.wav"
+    },
+    {
+      "filename": "utt_0196.wav",
+      "category": "operations_techniques",
+      "text": "Dix rapports envoyés au superviseur.",
+      "path": "operations_techniques/utt_0196.wav"
+    },
+    {
+      "filename": "utt_0197.wav",
+      "category": "operations_techniques",
+      "text": "Vingt-deux degrés, confort thermique atteint.",
+      "path": "operations_techniques/utt_0197.wav"
+    },
+    {
+      "filename": "utt_0200.wav",
+      "category": "operations_techniques",
+      "text": "Mille mercis pour votre vigilance.",
+      "path": "operations_techniques/utt_0200.wav"
+    },
+    {
+      "filename": "utt_0211.wav",
+      "category": "temps_unites",
+      "text": "Où est l’entrée principale?",
+      "path": "temps_unites/utt_0211.wav"
+    },
+    {
+      "filename": "utt_0212.wav",
+      "category": "temps_unites",
+      "text": "Où se trouve le poste de secours?",
+      "path": "temps_unites/utt_0212.wav"
+    },
+    {
+      "filename": "utt_0213.wav",
+      "category": "temps_unites",
+      "text": "À quelle heure commence la réunion?",
+      "path": "temps_unites/utt_0213.wav"
+    },
+    {
+      "filename": "utt_0214.wav",
+      "category": "temps_unites",
+      "text": "Pouvez-vous confirmer la réception?",
+      "path": "temps_unites/utt_0214.wav"
+    },
+    {
+      "filename": "utt_0225.wav",
+      "category": "navigation_indoor",
+      "text": "Portez vos lunettes de sécurité.",
+      "path": "navigation_indoor/utt_0225.wav"
+    },
+    {
+      "filename": "utt_0227.wav",
+      "category": "navigation_indoor",
+      "text": "Débranchez l’appareil avant l’entretien.",
+      "path": "navigation_indoor/utt_0227.wav"
+    },
+    {
+      "filename": "utt_0228.wav",
+      "category": "navigation_indoor",
+      "text": "Notez la température sur la fiche.",
+      "path": "navigation_indoor/utt_0228.wav"
+    },
+    {
+      "filename": "utt_0229.wav",
+      "category": "navigation_indoor",
+      "text": "Installez le ruban de balisage.",
+      "path": "navigation_indoor/utt_0229.wav"
+    },
+    {
+      "filename": "utt_0230.wav",
+      "category": "instructions_consignes",
+      "text": "Restez disponible sur le canal prioritaire.",
+      "path": "instructions_consignes/utt_0230.wav"
+    },
+    {
+      "filename": "utt_0231.wav",
+      "category": "navigation_indoor",
+      "text": "Les employés arrivent en avance.",
+      "path": "navigation_indoor/utt_0231.wav"
+    },
+    {
+      "filename": "utt_0232.wav",
+      "category": "navigation_indoor",
+      "text": "Les équipes d’entretien sont en route.",
+      "path": "navigation_indoor/utt_0232.wav"
+    },
+    {
+      "filename": "utt_0233.wav",
+      "category": "navigation_indoor",
+      "text": "Les alarmes actives sont affichées.",
+      "path": "navigation_indoor/utt_0233.wav"
+    },
+    {
+      "filename": "utt_0234.wav",
+      "category": "operations_techniques",
+      "text": "Les consignes ont été mises à jour.",
+      "path": "operations_techniques/utt_0234.wav"
+    },
+    {
+      "filename": "utt_0235.wav",
+      "category": "operations_techniques",
+      "text": "Les accès visiteurs sont limités.",
+      "path": "operations_techniques/utt_0235.wav"
+    },
+    {
+      "filename": "utt_0236.wav",
+      "category": "operations_techniques",
+      "text": "Des travaux sont prévus au niveau deux.",
+      "path": "operations_techniques/utt_0236.wav"
+    },
+    {
+      "filename": "utt_0237.wav",
+      "category": "operations_techniques",
+      "text": "Des camions attendent au quai trois.",
+      "path": "operations_techniques/utt_0237.wav"
+    },
+    {
+      "filename": "utt_0238.wav",
+      "category": "operations_techniques",
+      "text": "Des colis urgents sont au comptoir.",
+      "path": "operations_techniques/utt_0238.wav"
+    },
+    {
+      "filename": "utt_0239.wav",
+      "category": "operations_techniques",
+      "text": "Des contrôles aléatoires auront lieu aujourd’hui.",
+      "path": "operations_techniques/utt_0239.wav"
+    },
+    {
+      "filename": "utt_0240.wav",
+      "category": "operations_techniques",
+      "text": "Des chariots circulent dans l’allée.",
+      "path": "operations_techniques/utt_0240.wav"
+    },
+    {
+      "filename": "utt_0241.wav",
+      "category": "operations_techniques",
+      "text": "C’est l’entrée principale du bâtiment.",
+      "path": "operations_techniques/utt_0241.wav"
+    },
+    {
+      "filename": "utt_0242.wav",
+      "category": "operations_techniques",
+      "text": "C’est l’arrivée officielle du groupe.",
+      "path": "operations_techniques/utt_0242.wav"
+    },
+    {
+      "filename": "utt_0244.wav",
+      "category": "operations_techniques",
+      "text": "Qu’on termine ce secteur avant midi.",
+      "path": "operations_techniques/utt_0244.wav"
+    },
+    {
+      "filename": "utt_0248.wav",
+      "category": "operations_techniques",
+      "text": "D’ici quelques minutes, ce sera prêt.",
+      "path": "operations_techniques/utt_0248.wav"
+    },
+    {
+      "filename": "utt_0249.wav",
+      "category": "operations_techniques",
+      "text": "Premier étage, ascenseur à gauche.",
+      "path": "operations_techniques/utt_0249.wav"
+    },
+    {
+      "filename": "utt_0250.wav",
+      "category": "operations_techniques",
+      "text": "Dernier contrôle en zone B, puis on sort.",
+      "path": "operations_techniques/utt_0250.wav"
+    },
+    {
+      "filename": "utt_0251.wav",
+      "category": "systeme_statut",
+      "text": "Le char de service est prêt au stationnement.",
+      "path": "systeme_statut/utt_0251.wav"
+    },
+    {
+      "filename": "utt_0252.wav",
+      "category": "systeme_statut",
+      "text": "Stationnement visiteur complet, suivez l’affichage.",
+      "path": "systeme_statut/utt_0252.wav"
+    },
+    {
+      "filename": "utt_0253.wav",
+      "category": "systeme_statut",
+      "text": "On magasine du matériel après la ronde.",
+      "path": "systeme_statut/utt_0253.wav"
+    },
+    {
+      "filename": "utt_0254.wav",
+      "category": "systeme_statut",
+      "text": "Le dépanneur est ouvert jusqu’à vingt-deux heures.",
+      "path": "systeme_statut/utt_0254.wav"
+    },
+    {
+      "filename": "utt_0255.wav",
+      "category": "systeme_statut",
+      "text": "Mets ta tuque, il fait frette à l’extérieur.",
+      "path": "systeme_statut/utt_0255.wav"
+    },
+    {
+      "filename": "utt_0256.wav",
+      "category": "systeme_statut",
+      "text": "La piasse est acceptée au guichet.",
+      "path": "systeme_statut/utt_0256.wav"
+    },
+    {
+      "filename": "utt_0257.wav",
+      "category": "systeme_statut",
+      "text": "Souliers de sécurité obligatoires en atelier.",
+      "path": "systeme_statut/utt_0257.wav"
+    },
+    {
+      "filename": "utt_0259.wav",
+      "category": "systeme_statut",
+      "text": "Merci, c’est correct, on continue.",
+      "path": "systeme_statut/utt_0259.wav"
+    },
+    {
+      "filename": "utt_0261.wav",
+      "category": "operations_techniques",
+      "text": "Clôturez la mission et synchronisez vos données.",
+      "path": "operations_techniques/utt_0261.wav"
+    },
+    {
+      "filename": "utt_0262.wav",
+      "category": "operations_techniques",
+      "text": "Dernier rappel sécurité, retirez la consignation.",
+      "path": "operations_techniques/utt_0262.wav"
+    },
+    {
+      "filename": "utt_0263.wav",
+      "category": "operations_techniques",
+      "text": "Fin de créneau, retour point de rassemblement sud.",
+      "path": "operations_techniques/utt_0263.wav"
+    },
+    {
+      "filename": "utt_0264.wav",
+      "category": "operations_techniques",
+      "text": "Canal prioritaire libéré, passez en canal un.",
+      "path": "operations_techniques/utt_0264.wav"
+    },
+    {
+      "filename": "utt_0265.wav",
+      "category": "operations_techniques",
+      "text": "Votre badge est actif jusqu’à dix-sept heures.",
+      "path": "operations_techniques/utt_0265.wav"
+    },
+    {
+      "filename": "utt_0266.wav",
+      "category": "operations_techniques",
+      "text": "Accès atelier mécanique autorisé.",
+      "path": "operations_techniques/utt_0266.wav"
+    },
+    {
+      "filename": "utt_0267.wav",
+      "category": "operations_techniques",
+      "text": "Inspection visuelle requise sur la courroie.",
+      "path": "operations_techniques/utt_0267.wav"
+    },
+    {
+      "filename": "utt_0268.wav",
+      "category": "operations_techniques",
+      "text": "Essai de redémarrage en sécurité.",
+      "path": "operations_techniques/utt_0268.wav"
+    },
+    {
+      "filename": "utt_0269.wav",
+      "category": "operations_techniques",
+      "text": "Validation qualité nécessaire avant remise.",
+      "path": "operations_techniques/utt_0269.wav"
+    },
+    {
+      "filename": "utt_0272.wav",
+      "category": "operations_techniques",
+      "text": "Balise manquante, contactez le support.",
+      "path": "operations_techniques/utt_0272.wav"
+    },
+    {
+      "filename": "utt_0273.wav",
+      "category": "operations_techniques",
+      "text": "Carte indoor mise à jour téléchargée.",
+      "path": "operations_techniques/utt_0273.wav"
+    },
+    {
+      "filename": "utt_0274.wav",
+      "category": "operations_techniques",
+      "text": "Télémetrie reçue, capteur opérationnel.",
+      "path": "operations_techniques/utt_0274.wav"
+    },
+    {
+      "filename": "utt_0275.wav",
+      "category": "operations_techniques",
+      "text": "Aucune anomalie sur les dix derniers relevés.",
+      "path": "operations_techniques/utt_0275.wav"
+    },
+    {
+      "filename": "utt_0276.wav",
+      "category": "temps_unites",
+      "text": "Un écart de température a été corrigé.",
+      "path": "temps_unites/utt_0276.wav"
+    },
+    {
+      "filename": "utt_0277.wav",
+      "category": "temps_unites",
+      "text": "Deux points lumineux en maintenance.",
+      "path": "temps_unites/utt_0277.wav"
+    },
+    {
+      "filename": "utt_0278.wav",
+      "category": "temps_unites",
+      "text": "Trois badges expirent cette semaine.",
+      "path": "temps_unites/utt_0278.wav"
+    },
+    {
+      "filename": "utt_0279.wav",
+      "category": "temps_unites",
+      "text": "Quatre interventions planifiées demain.",
+      "path": "temps_unites/utt_0279.wav"
+    },
+    {
+      "filename": "utt_0280.wav",
+      "category": "temps_unites",
+      "text": "Cinq alarmes acquittées automatiquement.",
+      "path": "temps_unites/utt_0280.wav"
+    },
+    {
+      "filename": "utt_0281.wav",
+      "category": "temps_unites",
+      "text": "Le taux d’occupation est de vingt pour cent.",
+      "path": "temps_unites/utt_0281.wav"
+    },
+    {
+      "filename": "utt_0282.wav",
+      "category": "temps_unites",
+      "text": "Le seuil CO₂ atteint neuf cents parties par million.",
+      "path": "temps_unites/utt_0282.wav"
+    },
+    {
+      "filename": "utt_0283.wav",
+      "category": "temps_unites",
+      "text": "Le débit d’air est nominal.",
+      "path": "temps_unites/utt_0283.wav"
+    },
+    {
+      "filename": "utt_0284.wav",
+      "category": "temps_unites",
+      "text": "Le ventilateur V-3 est arrêté.",
+      "path": "temps_unites/utt_0284.wav"
+    },
+    {
+      "filename": "utt_0285.wav",
+      "category": "temps_unites",
+      "text": "Le capteur d’ouverture est fermé.",
+      "path": "temps_unites/utt_0285.wav"
+    },
+    {
+      "filename": "utt_0287.wav",
+      "category": "temps_unites",
+      "text": "La lumière de présence est allumée.",
+      "path": "temps_unites/utt_0287.wav"
+    },
+    {
+      "filename": "utt_0288.wav",
+      "category": "temps_unites",
+      "text": "Le chauffage est en mode réduit.",
+      "path": "temps_unites/utt_0288.wav"
+    },
+    {
+      "filename": "utt_0289.wav",
+      "category": "temps_unites",
+      "text": "Le refroidissement est désactivé.",
+      "path": "temps_unites/utt_0289.wav"
+    },
+    {
+      "filename": "utt_0290.wav",
+      "category": "temps_unites",
+      "text": "La ventilation passe en nocturne.",
+      "path": "temps_unites/utt_0290.wav"
+    },
+    {
+      "filename": "utt_0291.wav",
+      "category": "navigation_indoor",
+      "text": "Vous entrez en zone silencieuse, baissez la voix.",
+      "path": "navigation_indoor/utt_0291.wav"
+    },
+    {
+      "filename": "utt_0292.wav",
+      "category": "navigation_indoor",
+      "text": "Vous quittez la zone couverte, revenez vers la balise.",
+      "path": "navigation_indoor/utt_0292.wav"
+    },
+    {
+      "filename": "utt_0293.wav",
+      "category": "navigation_indoor",
+      "text": "Vous êtes à moins de cinq mètres de la destination.",
+      "path": "navigation_indoor/utt_0293.wav"
+    },
+    {
+      "filename": "utt_0294.wav",
+      "category": "navigation_indoor",
+      "text": "Vous avez dépassé le point, faites demi-tour.",
+      "path": "navigation_indoor/utt_0294.wav"
+    },
+    {
+      "filename": "utt_0295.wav",
+      "category": "navigation_indoor",
+      "text": "Vous arrivez au carrefour, prenez à droite.",
+      "path": "navigation_indoor/utt_0295.wav"
+    },
+    {
+      "filename": "utt_0297.wav",
+      "category": "navigation_indoor",
+      "text": "Continuez tout droit sur vingt mètres.",
+      "path": "navigation_indoor/utt_0297.wav"
+    },
+    {
+      "filename": "utt_0298.wav",
+      "category": "navigation_indoor",
+      "text": "Traversez le hall et montez au troisième.",
+      "path": "navigation_indoor/utt_0298.wav"
+    },
+    {
+      "filename": "utt_0299.wav",
+      "category": "navigation_indoor",
+      "text": "Descendez d’un étage et tournez à gauche.",
+      "path": "navigation_indoor/utt_0299.wav"
+    },
+    {
+      "filename": "utt_0300.wav",
+      "category": "navigation_indoor",
+      "text": "Prenez l’escalier de service à la prochaine porte.",
+      "path": "navigation_indoor/utt_0300.wav"
+    },
+    {
+      "filename": "utt_0301.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel PTI, confirmez « je vais bien ».",
+      "path": "instructions_consignes/utt_0301.wav"
+    },
+    {
+      "filename": "utt_0302.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel hydratation, buvez de l’eau.",
+      "path": "instructions_consignes/utt_0302.wav"
+    },
+    {
+      "filename": "utt_0303.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel EPI, casque et lunettes requis.",
+      "path": "instructions_consignes/utt_0303.wav"
+    },
+    {
+      "filename": "utt_0304.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel de consignation, cadenas et étiquette.",
+      "path": "instructions_consignes/utt_0304.wav"
+    },
+    {
+      "filename": "utt_0305.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel de nettoyage, laissez la zone propre.",
+      "path": "instructions_consignes/utt_0305.wav"
+    },
+    {
+      "filename": "utt_0306.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel d’inventaire, scannez les étiquettes.",
+      "path": "instructions_consignes/utt_0306.wav"
+    },
+    {
+      "filename": "utt_0307.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel de sécurité, gardez vos mains hors de la zone.",
+      "path": "instructions_consignes/utt_0307.wav"
+    },
+    {
+      "filename": "utt_0308.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel radio, test audio dans une minute.",
+      "path": "instructions_consignes/utt_0308.wav"
+    },
+    {
+      "filename": "utt_0309.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel position, envoyez votre point GPS indoor.",
+      "path": "instructions_consignes/utt_0309.wav"
+    },
+    {
+      "filename": "utt_0310.wav",
+      "category": "instructions_consignes",
+      "text": "Rappel fin de quart, clôturez vos tâches.",
+      "path": "instructions_consignes/utt_0310.wav"
+    },
+    {
+      "filename": "utt_0311.wav",
+      "category": "instructions_consignes",
+      "text": "Panique détectée, appuyez sur le bouton d’urgence.",
+      "path": "instructions_consignes/utt_0311.wav"
+    },
+    {
+      "filename": "utt_0312.wav",
+      "category": "instructions_consignes",
+      "text": "Alerte silencieuse activée, la sécurité vous écoute.",
+      "path": "instructions_consignes/utt_0312.wav"
+    },
+    {
+      "filename": "utt_0313.wav",
+      "category": "instructions_consignes",
+      "text": "Message au superviseur envoyé.",
+      "path": "instructions_consignes/utt_0313.wav"
+    },
+    {
+      "filename": "utt_0314.wav",
+      "category": "instructions_consignes",
+      "text": "Acquittement nécessaire, touchez le bouton vert.",
+      "path": "instructions_consignes/utt_0314.wav"
+    },
+    {
+      "filename": "utt_0315.wav",
+      "category": "instructions_consignes",
+      "text": "Lecture du QR code réussie.",
+      "path": "instructions_consignes/utt_0315.wav"
+    },
+    {
+      "filename": "utt_0316.wav",
+      "category": "instructions_consignes",
+      "text": "Horodatage automatique effectué.",
+      "path": "instructions_consignes/utt_0316.wav"
+    },
+    {
+      "filename": "utt_0317.wav",
+      "category": "instructions_consignes",
+      "text": "Signature électronique enregistrée.",
+      "path": "instructions_consignes/utt_0317.wav"
+    },
+    {
+      "filename": "utt_0318.wav",
+      "category": "instructions_consignes",
+      "text": "Données chiffrées et sauvegardées.",
+      "path": "instructions_consignes/utt_0318.wav"
+    },
+    {
+      "filename": "utt_0319.wav",
+      "category": "instructions_consignes",
+      "text": "Journal d’événements mis à jour.",
+      "path": "instructions_consignes/utt_0319.wav"
+    },
+    {
+      "filename": "utt_0320.wav",
+      "category": "instructions_consignes",
+      "text": "Configuration restaurée avec succès.",
+      "path": "instructions_consignes/utt_0320.wav"
+    },
+    {
+      "filename": "utt_0321.wav",
+      "category": "navigation_indoor",
+      "text": "Corridor encombré, empruntez la sortie latérale.",
+      "path": "navigation_indoor/utt_0321.wav"
+    },
+    {
+      "filename": "utt_0322.wav",
+      "category": "navigation_indoor",
+      "text": "Travaux de peinture en cours, aérez la zone.",
+      "path": "navigation_indoor/utt_0322.wav"
+    },
+    {
+      "filename": "utt_0323.wav",
+      "category": "navigation_indoor",
+      "text": "Colle fraîche, n’y touchez pas.",
+      "path": "navigation_indoor/utt_0323.wav"
+    },
+    {
+      "filename": "utt_0324.wav",
+      "category": "navigation_indoor",
+      "text": "Escabeau non conforme, remplacez-le.",
+      "path": "navigation_indoor/utt_0324.wav"
+    },
+    {
+      "filename": "utt_0325.wav",
+      "category": "navigation_indoor",
+      "text": "Prise défectueuse, mettez hors service.",
+      "path": "navigation_indoor/utt_0325.wav"
+    },
+    {
+      "filename": "utt_0326.wav",
+      "category": "navigation_indoor",
+      "text": "Fuite d’eau légère, placez un bac de rétention.",
+      "path": "navigation_indoor/utt_0326.wav"
+    },
+    {
+      "filename": "utt_0328.wav",
+      "category": "navigation_indoor",
+      "text": "Bruit anormal, arrêtez l’équipement et alertez.",
+      "path": "navigation_indoor/utt_0328.wav"
+    },
+    {
+      "filename": "utt_0329.wav",
+      "category": "navigation_indoor",
+      "text": "Vibration excessive, réduisez la charge.",
+      "path": "navigation_indoor/utt_0329.wav"
+    },
+    {
+      "filename": "utt_0330.wav",
+      "category": "navigation_indoor",
+      "text": "Échauffement détecté, laissez refroidir.",
+      "path": "navigation_indoor/utt_0330.wav"
+    },
+    {
+      "filename": "utt_0341.wav",
+      "category": "operations_techniques",
+      "text": "Clavier badge en panne, utilisez le lecteur secondaire.",
+      "path": "operations_techniques/utt_0341.wav"
+    },
+    {
+      "filename": "utt_0342.wav",
+      "category": "operations_techniques",
+      "text": "Accès visiteur créé pour aujourd’hui.",
+      "path": "operations_techniques/utt_0342.wav"
+    },
+    {
+      "filename": "utt_0344.wav",
+      "category": "operations_techniques",
+      "text": "Accès refusé, droits insuffisants.",
+      "path": "operations_techniques/utt_0344.wav"
+    },
+    {
+      "filename": "utt_0345.wav",
+      "category": "operations_techniques",
+      "text": "Accès accordé, bienvenue.",
+      "path": "operations_techniques/utt_0345.wav"
+    },
+    {
+      "filename": "utt_0346.wav",
+      "category": "operations_techniques",
+      "text": "Téléversement de photo requis pour l’accréditation.",
+      "path": "operations_techniques/utt_0346.wav"
+    },
+    {
+      "filename": "utt_0347.wav",
+      "category": "operations_techniques",
+      "text": "Formation sécurité à renouveler ce mois-ci.",
+      "path": "operations_techniques/utt_0347.wav"
+    },
+    {
+      "filename": "utt_0349.wav",
+      "category": "operations_techniques",
+      "text": "Alerte de proximité véhicule en marche.",
+      "path": "operations_techniques/utt_0349.wav"
+    },
+    {
+      "filename": "utt_0350.wav",
+      "category": "operations_techniques",
+      "text": "Zone piétonne, vitesse limitée.",
+      "path": "operations_techniques/utt_0350.wav"
+    },
+    {
+      "filename": "utt_0351.wav",
+      "category": "navigation_indoor",
+      "text": "Guide pas à pas, suivez la flèche bleue.",
+      "path": "navigation_indoor/utt_0351.wav"
+    },
+    {
+      "filename": "utt_0353.wav",
+      "category": "navigation_indoor",
+      "text": "Étape deux, prenez l’escalier A.",
+      "path": "navigation_indoor/utt_0353.wav"
+    },
+    {
+      "filename": "utt_0354.wav",
+      "category": "navigation_indoor",
+      "text": "Étape trois, tournez à gauche au palier.",
+      "path": "navigation_indoor/utt_0354.wav"
+    },
+    {
+      "filename": "utt_0357.wav",
+      "category": "navigation_indoor",
+      "text": "Itinéraire recalculé, obstacle imprévu.",
+      "path": "navigation_indoor/utt_0357.wav"
+    },
+    {
+      "filename": "utt_0358.wav",
+      "category": "navigation_indoor",
+      "text": "Restez sur la droite, couloir étroit.",
+      "path": "navigation_indoor/utt_0358.wav"
+    },
+    {
+      "filename": "utt_0359.wav",
+      "category": "navigation_indoor",
+      "text": "Attendez l’ascenseur, cabine en approche.",
+      "path": "navigation_indoor/utt_0359.wav"
+    },
+    {
+      "filename": "utt_0360.wav",
+      "category": "navigation_indoor",
+      "text": "Montez jusqu’au troisième et sortez côté est.",
+      "path": "navigation_indoor/utt_0360.wav"
+    },
+    {
+      "filename": "utt_0361.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de photo du scellé.",
+      "path": "instructions_consignes/utt_0361.wav"
+    },
+    {
+      "filename": "utt_0362.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de commentaire sur l’anomalie.",
+      "path": "instructions_consignes/utt_0362.wav"
+    },
+    {
+      "filename": "utt_0363.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de mesure de température.",
+      "path": "instructions_consignes/utt_0363.wav"
+    },
+    {
+      "filename": "utt_0364.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de mesure de pression.",
+      "path": "instructions_consignes/utt_0364.wav"
+    },
+    {
+      "filename": "utt_0365.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de lecture compteur énergie.",
+      "path": "instructions_consignes/utt_0365.wav"
+    },
+    {
+      "filename": "utt_0366.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de signature client.",
+      "path": "instructions_consignes/utt_0366.wav"
+    },
+    {
+      "filename": "utt_0367.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de position actuelle.",
+      "path": "instructions_consignes/utt_0367.wav"
+    },
+    {
+      "filename": "utt_0368.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de relance de l’équipement.",
+      "path": "instructions_consignes/utt_0368.wav"
+    },
+    {
+      "filename": "utt_0369.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de vérification visuelle.",
+      "path": "instructions_consignes/utt_0369.wav"
+    },
+    {
+      "filename": "utt_0370.wav",
+      "category": "instructions_consignes",
+      "text": "Demande de validation finale.",
+      "path": "instructions_consignes/utt_0370.wav"
+    },
+    {
+      "filename": "utt_0371.wav",
+      "category": "navigation_indoor",
+      "text": "Instruction, attendez le feu vert.",
+      "path": "navigation_indoor/utt_0371.wav"
+    },
+    {
+      "filename": "utt_0372.wav",
+      "category": "navigation_indoor",
+      "text": "Instruction, ne franchissez pas la barrière.",
+      "path": "navigation_indoor/utt_0372.wav"
+    },
+    {
+      "filename": "utt_0373.wav",
+      "category": "navigation_indoor",
+      "text": "Instruction, gardez la ligne claire.",
+      "path": "navigation_indoor/utt_0373.wav"
+    },
+    {
+      "filename": "utt_0375.wav",
+      "category": "navigation_indoor",
+      "text": "Instruction, maintenez la zone propre.",
+      "path": "navigation_indoor/utt_0375.wav"
+    },
+    {
+      "filename": "utt_0377.wav",
+      "category": "navigation_indoor",
+      "text": "Instruction, ne touchez pas aux conducteurs nus.",
+      "path": "navigation_indoor/utt_0377.wav"
+    },
+    {
+      "filename": "utt_0378.wav",
+      "category": "navigation_indoor",
+      "text": "Instruction, signalez tout écart.",
+      "path": "navigation_indoor/utt_0378.wav"
+    },
+    {
+      "filename": "utt_0379.wav",
+      "category": "navigation_indoor",
+      "text": "Instruction, éteignez l’outil après usage.",
+      "path": "navigation_indoor/utt_0379.wav"
+    },
+    {
+      "filename": "utt_0380.wav",
+      "category": "navigation_indoor",
+      "text": "Instruction, verrouillez la porte en sortant.",
+      "path": "navigation_indoor/utt_0380.wav"
+    },
+    {
+      "filename": "utt_0381.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, vent fort prévu cet après-midi.",
+      "path": "instructions_consignes/utt_0381.wav"
+    },
+    {
+      "filename": "utt_0382.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, pluie soutenue, limitez les sorties.",
+      "path": "instructions_consignes/utt_0382.wav"
+    },
+    {
+      "filename": "utt_0383.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, verglas possible en soirée.",
+      "path": "instructions_consignes/utt_0383.wav"
+    },
+    {
+      "filename": "utt_0384.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, chaleur élevée, augmentez les pauses.",
+      "path": "instructions_consignes/utt_0384.wav"
+    },
+    {
+      "filename": "utt_0385.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, orage en approche, suspendre travaux en hauteur.",
+      "path": "instructions_consignes/utt_0385.wav"
+    },
+    {
+      "filename": "utt_0386.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, neige faible, prudence sur les marches.",
+      "path": "instructions_consignes/utt_0386.wav"
+    },
+    {
+      "filename": "utt_0387.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, visibilité réduite, éclairez vos déplacements.",
+      "path": "instructions_consignes/utt_0387.wav"
+    },
+    {
+      "filename": "utt_0388.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, humidex élevé, buvez souvent.",
+      "path": "instructions_consignes/utt_0388.wav"
+    },
+    {
+      "filename": "utt_0389.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, rafales en cour intérieure.",
+      "path": "instructions_consignes/utt_0389.wav"
+    },
+    {
+      "filename": "utt_0390.wav",
+      "category": "instructions_consignes",
+      "text": "Climat, alerte météo levée.",
+      "path": "instructions_consignes/utt_0390.wav"
+    },
+    {
+      "filename": "utt_0393.wav",
+      "category": "systeme_statut",
+      "text": "Merci, rapport complet.",
+      "path": "systeme_statut/utt_0393.wav"
+    },
+    {
+      "filename": "utt_0394.wav",
+      "category": "systeme_statut",
+      "text": "Merci, mesures valides.",
+      "path": "systeme_statut/utt_0394.wav"
+    },
+    {
+      "filename": "utt_0395.wav",
+      "category": "systeme_statut",
+      "text": "Merci, accès rétabli.",
+      "path": "systeme_statut/utt_0395.wav"
+    },
+    {
+      "filename": "utt_0396.wav",
+      "category": "systeme_statut",
+      "text": "Merci, consigne retirée.",
+      "path": "systeme_statut/utt_0396.wav"
+    },
+    {
+      "filename": "utt_0397.wav",
+      "category": "systeme_statut",
+      "text": "Merci, trajet terminé.",
+      "path": "systeme_statut/utt_0397.wav"
+    },
+    {
+      "filename": "utt_0398.wav",
+      "category": "systeme_statut",
+      "text": "Merci, présence confirmée.",
+      "path": "systeme_statut/utt_0398.wav"
+    },
+    {
+      "filename": "utt_0399.wav",
+      "category": "systeme_statut",
+      "text": "Merci, alerte acquittée.",
+      "path": "systeme_statut/utt_0399.wav"
+    },
+    {
+      "filename": "utt_0400.wav",
+      "category": "systeme_statut",
+      "text": "Merci, mission clôturée.",
+      "path": "systeme_statut/utt_0400.wav"
+    }
+  ]
+}
