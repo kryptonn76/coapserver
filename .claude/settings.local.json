@@ -14,7 +14,11 @@
       "Read(//Users/lilianbrun/esp2/esp-idf/examples/openthread/ot_cli_lux/main/**)",
       "Read(//Users/lilianbrun/esp2/esp-thread-br/examples/basic_thread_border_router/**)",
       "Bash(source:*)",
-      "Bash(idf.py:*)"
+      "Bash(idf.py:*)",
+      "Read(//Users/lilianbrun/esp2/esp-idf/examples/openthread/**)",
+      "WebFetch(domain:www.sparkfun.com)",
+      "Read(//Users/lilianbrun/esp2/**)",
+      "WebFetch(domain:docs.espressif.com)"
     ],
     "deny": [],
     "ask": []
