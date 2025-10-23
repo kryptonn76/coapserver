@@ -84,6 +84,11 @@
       "address": "fd78:8e78:3bfe:1:6570:8116:71ac:c405",
       "ordre": 0,
       "connexes": []
+    },
+    "PL_02": {
+      "address": "fd78:8e78:3bfe:1:d295:7d04:fa78:426b",
+      "ordre": 0,
+      "connexes": []
     }
   }
 }
