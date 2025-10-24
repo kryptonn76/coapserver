@@ -2,8 +2,8 @@
   "version": "1.0",
   "generated": "2025-10-14T15:26:26.664433",
   "sd_path": "/sdcard/audio",
-  "total_directories": 15,
-  "total_files": 354,
+  "total_directories": 18,
+  "total_files": 383,
   "directories": {
     "d-001": {
       "original_name": "alertes_pti",
@@ -78,6 +78,21 @@
     "d-015": {
       "original_name": "[1999] Californication",
       "original_path": "music/[1999] Californication",
+      "depth": 1
+    },
+    "d-016": {
+      "original_name": "Charlotte Cardin - Une semaine à Paris",
+      "original_path": "music/Charlotte Cardin - Une semaine à Paris",
+      "depth": 1
+    },
+    "d-017": {
+      "original_name": "Charlotte Cardin - 99 Nights",
+      "original_path": "music/Charlotte Cardin - 99 Nights",
+      "depth": 1
+    },
+    "d-018": {
+      "original_name": "Charlotte Cardin - Phoenix",
+      "original_path": "music/Charlotte Cardin - Phoenix",
       "depth": 1
     }
   },
@@ -2559,6 +2574,209 @@
       "directory": "[1999] Californication",
       "size": 36256270,
       "description": ""
+    },
+    "f-355.wav": {
+      "original_filename": "t-001.wav",
+      "original_path": "music/d-016/t-001.wav",
+      "directory": "Charlotte Cardin - Une semaine à Paris",
+      "size": 0,
+      "description": "01 - Real Love"
+    },
+    "f-356.wav": {
+      "original_filename": "t-002.wav",
+      "original_path": "music/d-016/t-002.wav",
+      "directory": "Charlotte Cardin - Une semaine à Paris",
+      "size": 0,
+      "description": "02 - Confetti (VF)"
+    },
+    "f-357.wav": {
+      "original_filename": "t-003.wav",
+      "original_path": "music/d-016/t-003.wav",
+      "directory": "Charlotte Cardin - Une semaine à Paris",
+      "size": 0,
+      "description": "03 - Feel Good"
+    },
+    "f-358.wav": {
+      "original_filename": "t-004.wav",
+      "original_path": "music/d-016/t-004.wav",
+      "directory": "Charlotte Cardin - Une semaine à Paris",
+      "size": 0,
+      "description": "04 - Un peu trop"
+    },
+    "f-359.wav": {
+      "original_filename": "t-001.wav",
+      "original_path": "music/d-017/t-001.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "01 - Puppy"
+    },
+    "f-360.wav": {
+      "original_filename": "t-002.wav",
+      "original_path": "music/d-017/t-002.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "02 - Enfer"
+    },
+    "f-361.wav": {
+      "original_filename": "t-003.wav",
+      "original_path": "music/d-017/t-003.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "03 - Confetti"
+    },
+    "f-362.wav": {
+      "original_filename": "t-004.wav",
+      "original_path": "music/d-017/t-004.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "04 - Way Back"
+    },
+    "f-363.wav": {
+      "original_filename": "t-005.wav",
+      "original_path": "music/d-017/t-005.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "05 - Jim Carrey"
+    },
+    "f-364.wav": {
+      "original_filename": "t-006.wav",
+      "original_path": "music/d-017/t-006.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "06 - How High (Explicit)"
+    },
+    "f-365.wav": {
+      "original_filename": "t-007.wav",
+      "original_path": "music/d-017/t-007.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "07 - Somebody First (Explicit)"
+    },
+    "f-366.wav": {
+      "original_filename": "t-008.wav",
+      "original_path": "music/d-017/t-008.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "08 - 99 Nights (Explicit)"
+    },
+    "f-367.wav": {
+      "original_filename": "t-009.wav",
+      "original_path": "music/d-017/t-009.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "09 - Someone I Could Love"
+    },
+    "f-368.wav": {
+      "original_filename": "t-010.wav",
+      "original_path": "music/d-017/t-010.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "10 - Looping (Explicit)"
+    },
+    "f-369.wav": {
+      "original_filename": "t-011.wav",
+      "original_path": "music/d-017/t-011.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "11 - Daddy's a Psycho (Explicit)"
+    },
+    "f-370.wav": {
+      "original_filename": "t-012.wav",
+      "original_path": "music/d-017/t-012.wav",
+      "directory": "Charlotte Cardin - 99 Nights",
+      "size": 0,
+      "description": "12 - Next To You"
+    },
+    "f-371.wav": {
+      "original_filename": "t-001.wav",
+      "original_path": "music/d-018/t-001.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "01 - Phoenix"
+    },
+    "f-372.wav": {
+      "original_filename": "t-002.wav",
+      "original_path": "music/d-018/t-002.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "02 - Passive Aggressive"
+    },
+    "f-373.wav": {
+      "original_filename": "t-003.wav",
+      "original_path": "music/d-018/t-003.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "03 - Anyone Who Loves Me"
+    },
+    "f-374.wav": {
+      "original_filename": "t-004.wav",
+      "original_path": "music/d-018/t-004.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "04 - Meaningless"
+    },
+    "f-375.wav": {
+      "original_filename": "t-005.wav",
+      "original_path": "music/d-018/t-005.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "05 - Daddy"
+    },
+    "f-376.wav": {
+      "original_filename": "t-006.wav",
+      "original_path": "music/d-018/t-006.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "06 - Sex To Me"
+    },
+    "f-377.wav": {
+      "original_filename": "t-007.wav",
+      "original_path": "music/d-018/t-007.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "07 - Good Girl"
+    },
+    "f-378.wav": {
+      "original_filename": "t-008.wav",
+      "original_path": "music/d-018/t-008.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "08 - Sad Girl"
+    },
+    "f-379.wav": {
+      "original_filename": "t-009.wav",
+      "original_path": "music/d-018/t-009.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "09 - XOXO"
+    },
+    "f-380.wav": {
+      "original_filename": "t-010.wav",
+      "original_path": "music/d-018/t-010.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "10 - Oceans"
+    },
+    "f-381.wav": {
+      "original_filename": "t-011.wav",
+      "original_path": "music/d-018/t-011.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "11 - Sun Goes Down (Buddy)"
+    },
+    "f-382.wav": {
+      "original_filename": "t-012.wav",
+      "original_path": "music/d-018/t-012.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "12 - Romeo"
+    },
+    "f-383.wav": {
+      "original_filename": "t-013.wav",
+      "original_path": "music/d-018/t-013.wav",
+      "directory": "Charlotte Cardin - Phoenix",
+      "size": 0,
+      "description": "13 - Je quitte"
     }
   }
 }

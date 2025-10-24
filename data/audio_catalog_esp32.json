@@ -2,8 +2,8 @@
   "version": "2.0",
   "generated": "2025-10-14T15:39:50.553505",
   "source": "audio_mapping.json (FAT32-safe renaming)",
-  "total_messages": 354,
-  "categories_count": 12,
+  "total_messages": 383,
+  "categories_count": 15,
   "categories": {
     "alertes_pti": {
       "name": "alertes_pti",
@@ -3274,6 +3274,288 @@
           "size": 36256270
         }
       ]
+    },
+    "Charlotte Cardin - Une semaine à Paris": {
+      "name": "Charlotte Cardin - Une semaine à Paris",
+      "description": "🎵 Album musical",
+      "count": 4,
+      "messages": [
+        {
+          "id": 355,
+          "description": "01 - Real Love",
+          "category": "Charlotte Cardin - Une semaine à Paris",
+          "filename": "t-001.wav",
+          "path": "/sdcard/audio/d-004/d-016/t-001.wav",
+          "path_relative": "music/d-016/t-001.wav",
+          "size": 0
+        },
+        {
+          "id": 356,
+          "description": "02 - Confetti (VF)",
+          "category": "Charlotte Cardin - Une semaine à Paris",
+          "filename": "t-002.wav",
+          "path": "/sdcard/audio/d-004/d-016/t-002.wav",
+          "path_relative": "music/d-016/t-002.wav",
+          "size": 0
+        },
+        {
+          "id": 357,
+          "description": "03 - Feel Good",
+          "category": "Charlotte Cardin - Une semaine à Paris",
+          "filename": "t-003.wav",
+          "path": "/sdcard/audio/d-004/d-016/t-003.wav",
+          "path_relative": "music/d-016/t-003.wav",
+          "size": 0
+        },
+        {
+          "id": 358,
+          "description": "04 - Un peu trop",
+          "category": "Charlotte Cardin - Une semaine à Paris",
+          "filename": "t-004.wav",
+          "path": "/sdcard/audio/d-004/d-016/t-004.wav",
+          "path_relative": "music/d-016/t-004.wav",
+          "size": 0
+        }
+      ]
+    },
+    "Charlotte Cardin - 99 Nights": {
+      "name": "Charlotte Cardin - 99 Nights",
+      "description": "🎵 Album musical",
+      "count": 12,
+      "messages": [
+        {
+          "id": 359,
+          "description": "01 - Puppy",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-001.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-001.wav",
+          "path_relative": "music/d-017/t-001.wav",
+          "size": 0
+        },
+        {
+          "id": 360,
+          "description": "02 - Enfer",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-002.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-002.wav",
+          "path_relative": "music/d-017/t-002.wav",
+          "size": 0
+        },
+        {
+          "id": 361,
+          "description": "03 - Confetti",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-003.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-003.wav",
+          "path_relative": "music/d-017/t-003.wav",
+          "size": 0
+        },
+        {
+          "id": 362,
+          "description": "04 - Way Back",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-004.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-004.wav",
+          "path_relative": "music/d-017/t-004.wav",
+          "size": 0
+        },
+        {
+          "id": 363,
+          "description": "05 - Jim Carrey",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-005.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-005.wav",
+          "path_relative": "music/d-017/t-005.wav",
+          "size": 0
+        },
+        {
+          "id": 364,
+          "description": "06 - How High (Explicit)",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-006.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-006.wav",
+          "path_relative": "music/d-017/t-006.wav",
+          "size": 0
+        },
+        {
+          "id": 365,
+          "description": "07 - Somebody First (Explicit)",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-007.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-007.wav",
+          "path_relative": "music/d-017/t-007.wav",
+          "size": 0
+        },
+        {
+          "id": 366,
+          "description": "08 - 99 Nights (Explicit)",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-008.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-008.wav",
+          "path_relative": "music/d-017/t-008.wav",
+          "size": 0
+        },
+        {
+          "id": 367,
+          "description": "09 - Someone I Could Love",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-009.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-009.wav",
+          "path_relative": "music/d-017/t-009.wav",
+          "size": 0
+        },
+        {
+          "id": 368,
+          "description": "10 - Looping (Explicit)",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-010.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-010.wav",
+          "path_relative": "music/d-017/t-010.wav",
+          "size": 0
+        },
+        {
+          "id": 369,
+          "description": "11 - Daddy's a Psycho (Explicit)",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-011.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-011.wav",
+          "path_relative": "music/d-017/t-011.wav",
+          "size": 0
+        },
+        {
+          "id": 370,
+          "description": "12 - Next To You",
+          "category": "Charlotte Cardin - 99 Nights",
+          "filename": "t-012.wav",
+          "path": "/sdcard/audio/d-004/d-017/t-012.wav",
+          "path_relative": "music/d-017/t-012.wav",
+          "size": 0
+        }
+      ]
+    },
+    "Charlotte Cardin - Phoenix": {
+      "name": "Charlotte Cardin - Phoenix",
+      "description": "🎵 Album musical",
+      "count": 13,
+      "messages": [
+        {
+          "id": 371,
+          "description": "01 - Phoenix",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-001.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-001.wav",
+          "path_relative": "music/d-018/t-001.wav",
+          "size": 0
+        },
+        {
+          "id": 372,
+          "description": "02 - Passive Aggressive",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-002.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-002.wav",
+          "path_relative": "music/d-018/t-002.wav",
+          "size": 0
+        },
+        {
+          "id": 373,
+          "description": "03 - Anyone Who Loves Me",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-003.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-003.wav",
+          "path_relative": "music/d-018/t-003.wav",
+          "size": 0
+        },
+        {
+          "id": 374,
+          "description": "04 - Meaningless",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-004.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-004.wav",
+          "path_relative": "music/d-018/t-004.wav",
+          "size": 0
+        },
+        {
+          "id": 375,
+          "description": "05 - Daddy",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-005.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-005.wav",
+          "path_relative": "music/d-018/t-005.wav",
+          "size": 0
+        },
+        {
+          "id": 376,
+          "description": "06 - Sex To Me",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-006.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-006.wav",
+          "path_relative": "music/d-018/t-006.wav",
+          "size": 0
+        },
+        {
+          "id": 377,
+          "description": "07 - Good Girl",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-007.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-007.wav",
+          "path_relative": "music/d-018/t-007.wav",
+          "size": 0
+        },
+        {
+          "id": 378,
+          "description": "08 - Sad Girl",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-008.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-008.wav",
+          "path_relative": "music/d-018/t-008.wav",
+          "size": 0
+        },
+        {
+          "id": 379,
+          "description": "09 - XOXO",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-009.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-009.wav",
+          "path_relative": "music/d-018/t-009.wav",
+          "size": 0
+        },
+        {
+          "id": 380,
+          "description": "10 - Oceans",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-010.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-010.wav",
+          "path_relative": "music/d-018/t-010.wav",
+          "size": 0
+        },
+        {
+          "id": 381,
+          "description": "11 - Sun Goes Down (Buddy)",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-011.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-011.wav",
+          "path_relative": "music/d-018/t-011.wav",
+          "size": 0
+        },
+        {
+          "id": 382,
+          "description": "12 - Romeo",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-012.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-012.wav",
+          "path_relative": "music/d-018/t-012.wav",
+          "size": 0
+        },
+        {
+          "id": 383,
+          "description": "13 - Je quitte",
+          "category": "Charlotte Cardin - Phoenix",
+          "filename": "t-013.wav",
+          "path": "/sdcard/audio/d-004/d-018/t-013.wav",
+          "path_relative": "music/d-018/t-013.wav",
+          "size": 0
+        }
+      ]
     }
   },
   "all_messages": [
@@ -6462,6 +6744,267 @@
       "path": "/sdcard/audio/d-004/d-015/t-015.wav",
       "path_relative": "music/d-015/t-015.wav",
       "size": 36256270
+    },
+    {
+      "id": 355,
+      "description": "01 - Real Love",
+      "category": "Charlotte Cardin - Une semaine à Paris",
+      "filename": "t-001.wav",
+      "path": "/sdcard/audio/d-004/d-016/t-001.wav",
+      "path_relative": "music/d-016/t-001.wav",
+      "size": 0
+    },
+    {
+      "id": 356,
+      "description": "02 - Confetti (VF)",
+      "category": "Charlotte Cardin - Une semaine à Paris",
+      "filename": "t-002.wav",
+      "path": "/sdcard/audio/d-004/d-016/t-002.wav",
+      "path_relative": "music/d-016/t-002.wav",
+      "size": 0
+    },
+    {
+      "id": 357,
+      "description": "03 - Feel Good",
+      "category": "Charlotte Cardin - Une semaine à Paris",
+      "filename": "t-003.wav",
+      "path": "/sdcard/audio/d-004/d-016/t-003.wav",
+      "path_relative": "music/d-016/t-003.wav",
+      "size": 0
+    },
+    {
+      "id": 358,
+      "description": "04 - Un peu trop",
+      "category": "Charlotte Cardin - Une semaine à Paris",
+      "filename": "t-004.wav",
+      "path": "/sdcard/audio/d-004/d-016/t-004.wav",
+      "path_relative": "music/d-016/t-004.wav",
+      "size": 0
+    },
+    {
+      "id": 359,
+      "description": "01 - Puppy",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-001.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-001.wav",
+      "path_relative": "music/d-017/t-001.wav",
+      "size": 0
+    },
+    {
+      "id": 360,
+      "description": "02 - Enfer",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-002.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-002.wav",
+      "path_relative": "music/d-017/t-002.wav",
+      "size": 0
+    },
+    {
+      "id": 361,
+      "description": "03 - Confetti",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-003.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-003.wav",
+      "path_relative": "music/d-017/t-003.wav",
+      "size": 0
+    },
+    {
+      "id": 362,
+      "description": "04 - Way Back",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-004.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-004.wav",
+      "path_relative": "music/d-017/t-004.wav",
+      "size": 0
+    },
+    {
+      "id": 363,
+      "description": "05 - Jim Carrey",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-005.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-005.wav",
+      "path_relative": "music/d-017/t-005.wav",
+      "size": 0
+    },
+    {
+      "id": 364,
+      "description": "06 - How High (Explicit)",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-006.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-006.wav",
+      "path_relative": "music/d-017/t-006.wav",
+      "size": 0
+    },
+    {
+      "id": 365,
+      "description": "07 - Somebody First (Explicit)",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-007.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-007.wav",
+      "path_relative": "music/d-017/t-007.wav",
+      "size": 0
+    },
+    {
+      "id": 366,
+      "description": "08 - 99 Nights (Explicit)",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-008.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-008.wav",
+      "path_relative": "music/d-017/t-008.wav",
+      "size": 0
+    },
+    {
+      "id": 367,
+      "description": "09 - Someone I Could Love",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-009.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-009.wav",
+      "path_relative": "music/d-017/t-009.wav",
+      "size": 0
+    },
+    {
+      "id": 368,
+      "description": "10 - Looping (Explicit)",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-010.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-010.wav",
+      "path_relative": "music/d-017/t-010.wav",
+      "size": 0
+    },
+    {
+      "id": 369,
+      "description": "11 - Daddy's a Psycho (Explicit)",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-011.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-011.wav",
+      "path_relative": "music/d-017/t-011.wav",
+      "size": 0
+    },
+    {
+      "id": 370,
+      "description": "12 - Next To You",
+      "category": "Charlotte Cardin - 99 Nights",
+      "filename": "t-012.wav",
+      "path": "/sdcard/audio/d-004/d-017/t-012.wav",
+      "path_relative": "music/d-017/t-012.wav",
+      "size": 0
+    },
+    {
+      "id": 371,
+      "description": "01 - Phoenix",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-001.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-001.wav",
+      "path_relative": "music/d-018/t-001.wav",
+      "size": 0
+    },
+    {
+      "id": 372,
+      "description": "02 - Passive Aggressive",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-002.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-002.wav",
+      "path_relative": "music/d-018/t-002.wav",
+      "size": 0
+    },
+    {
+      "id": 373,
+      "description": "03 - Anyone Who Loves Me",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-003.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-003.wav",
+      "path_relative": "music/d-018/t-003.wav",
+      "size": 0
+    },
+    {
+      "id": 374,
+      "description": "04 - Meaningless",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-004.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-004.wav",
+      "path_relative": "music/d-018/t-004.wav",
+      "size": 0
+    },
+    {
+      "id": 375,
+      "description": "05 - Daddy",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-005.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-005.wav",
+      "path_relative": "music/d-018/t-005.wav",
+      "size": 0
+    },
+    {
+      "id": 376,
+      "description": "06 - Sex To Me",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-006.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-006.wav",
+      "path_relative": "music/d-018/t-006.wav",
+      "size": 0
+    },
+    {
+      "id": 377,
+      "description": "07 - Good Girl",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-007.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-007.wav",
+      "path_relative": "music/d-018/t-007.wav",
+      "size": 0
+    },
+    {
+      "id": 378,
+      "description": "08 - Sad Girl",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-008.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-008.wav",
+      "path_relative": "music/d-018/t-008.wav",
+      "size": 0
+    },
+    {
+      "id": 379,
+      "description": "09 - XOXO",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-009.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-009.wav",
+      "path_relative": "music/d-018/t-009.wav",
+      "size": 0
+    },
+    {
+      "id": 380,
+      "description": "10 - Oceans",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-010.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-010.wav",
+      "path_relative": "music/d-018/t-010.wav",
+      "size": 0
+    },
+    {
+      "id": 381,
+      "description": "11 - Sun Goes Down (Buddy)",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-011.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-011.wav",
+      "path_relative": "music/d-018/t-011.wav",
+      "size": 0
+    },
+    {
+      "id": 382,
+      "description": "12 - Romeo",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-012.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-012.wav",
+      "path_relative": "music/d-018/t-012.wav",
+      "size": 0
+    },
+    {
+      "id": 383,
+      "description": "13 - Je quitte",
+      "category": "Charlotte Cardin - Phoenix",
+      "filename": "t-013.wav",
+      "path": "/sdcard/audio/d-004/d-018/t-013.wav",
+      "path_relative": "music/d-018/t-013.wav",
+      "size": 0
     }
   ],
   "instant_messages": [
