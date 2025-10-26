@@ -470,21 +470,37 @@ class CoAPServer:
             
             print(f"   État actuel de la LED source: {'ON' if current_state else 'OFF'}")
             print(f"   → Toggle toutes les LEDs vers: {'ON' if new_state else 'OFF'}")
-            
-            # Obtenir toutes les adresses des nodes
-            addresses = self.registry.get_all_addresses()
-            
-            # Envoyer la commande à tous les nodes
-            command = "intensity:100" if new_state else "intensity:0"
-            for addr in addresses:
-                self.send_coap_post(addr, "led/driver", command)
-                
-                # Mettre à jour l'état local de chaque node
-                if addr not in self.led_states:
-                    self.led_states[addr] = {}
-                self.led_states[addr]['light'] = new_state
-            
-            print(f"   ✅ {len(addresses)} nodes synchronisés")
+
+            # Envoyer la commande à tous les nodes via Border Router
+            action = 'on' if new_state else 'off'
+            intensity = 100 if new_state else 0
+            success_count = 0
+
+            for name in self.registry.nodes.keys():
+                success, request_id, error = self.send_command_via_br(name, 'led_driver', {
+                    'action': action,
+                    'intensity': intensity
+                })
+
+                if success:
+                    success_count += 1
+                    # Mettre à jour état LED driver local
+                    if name not in self.led_driver_states:
+                        self.led_driver_states[name] = {}
+                    self.led_driver_states[name]['intensity'] = intensity
+
+                    # Mettre à jour état LED legacy
+                    node_data = self.registry.nodes.get(name)
+                    if isinstance(node_data, dict):
+                        addr = node_data.get('address')
+                    else:
+                        addr = node_data
+                    if addr:
+                        if addr not in self.led_states:
+                            self.led_states[addr] = {}
+                        self.led_states[addr]['light'] = new_state
+
+            print(f"   ✅ {success_count}/{len(self.registry.nodes)} nodes synchronisés")
             
             event_data['action'] = 'longpress'
             event_data['node_id'] = node_id
@@ -532,11 +548,22 @@ class CoAPServer:
             self.led_states[source_addr] = {}
         self.led_states[source_addr]['light'] = new_state
         
-        # Envoyer la commande
-        command = "intensity:100" if new_state else "intensity:0"
-        self.send_coap_post(source_addr, "led/driver", command)
-        
-        print(f"   → LED {node_name}: {'ON' if new_state else 'OFF'}")
+        # Envoyer la commande via Border Router
+        action = 'on' if new_state else 'off'
+        intensity = 100 if new_state else 0
+        success, request_id, error = self.send_command_via_br(node_name, 'led_driver', {
+            'action': action,
+            'intensity': intensity
+        })
+
+        if success:
+            print(f"   → LED {node_name}: {'ON' if new_state else 'OFF'}")
+            # Mettre à jour état LED driver local
+            if node_name not in self.led_driver_states:
+                self.led_driver_states[node_name] = {}
+            self.led_driver_states[node_name]['intensity'] = intensity
+        else:
+            print(f"   ❌ Échec envoi commande LED: {error}")
         
         # Émettre l'événement WebSocket
         event_data['led_state'] = new_state
