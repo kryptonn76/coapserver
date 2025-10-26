@@ -18,7 +18,8 @@
       "Read(//Users/lilianbrun/esp2/esp-idf/examples/openthread/**)",
       "WebFetch(domain:www.sparkfun.com)",
       "Read(//Users/lilianbrun/esp2/**)",
-      "WebFetch(domain:docs.espressif.com)"
+      "WebFetch(domain:docs.espressif.com)",
+      "Read(//Users/lilianbrun/work/ttd/luxnavix/**)"
     ],
     "deny": [],
     "ask": []

@@ -471,9 +471,9 @@ class CoAPServer:
             addresses = self.registry.get_all_addresses()
             
             # Envoyer la commande à tous les nodes
-            command = "light:on" if new_state else "light:off"
+            command = "intensity:100" if new_state else "intensity:0"
             for addr in addresses:
-                self.send_coap_post(addr, "led", command)
+                self.send_coap_post(addr, "led/driver", command)
                 
                 # Mettre à jour l'état local de chaque node
                 if addr not in self.led_states:
@@ -529,8 +529,8 @@ class CoAPServer:
         self.led_states[source_addr]['light'] = new_state
         
         # Envoyer la commande
-        command = "light:on" if new_state else "light:off"
-        self.send_coap_post(source_addr, "led", command)
+        command = "intensity:100" if new_state else "intensity:0"
+        self.send_coap_post(source_addr, "led/driver", command)
         
         print(f"   → LED {node_name}: {'ON' if new_state else 'OFF'}")
         
