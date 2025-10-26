@@ -285,35 +285,29 @@ class CoAPServer:
         """
         br_id = data.get('br_id')
         node_name = data.get('node')
-        payload = data.get('payload', {})
+        payload_data = data.get('payload', {})
 
-        print(f"🔘 Événement bouton depuis BR {br_id}, node {node_name}: {payload}")
+        print(f"🔘 Événement bouton depuis BR {br_id}, node {node_name}: {payload_data}")
 
-        # Extraire les informations du payload
-        state = payload.get('state', 'pressed')
-        duration_ms = payload.get('duration_ms', 0)
+        # Récupérer l'adresse IPv6 du node
+        node_addr = self.registry.get_address_by_node(node_name)
+        if not node_addr:
+            print(f"❌ Impossible de trouver l'adresse pour {node_name}")
+            return
 
-        # Créer l'événement pour le web
-        event_data = {
-            'node': node_name,
-            'br_id': br_id,
-            'timestamp': datetime.now().isoformat(),
-            'type': 'button',
-            'state': state,
-            'duration_ms': duration_ms
-        }
+        # Extraire le type d'événement
+        event_type = payload_data.get('type', '')
 
-        # Détecter si c'est un long press (> 2 secondes)
-        if duration_ms > 2000:
-            print(f"🔘🔘 BOUTON LONG PRESS détecté (node {node_name}, {duration_ms}ms)")
-            event_data['action'] = 'longpress'
+        # Construire le payload au format attendu par handle_button_event
+        if event_type == 'button_longpress':
+            payload_str = f"longpress:{node_name}"
+        elif event_type == 'button_pressed':
+            payload_str = ""  # Click simple
+        else:
+            payload_str = ""
 
-            # TODO: Implémenter la logique de toggle global des LEDs via WebSocket
-            # Pour l'instant on émet juste l'événement
-
-        # Émettre l'événement WebSocket
-        socketio.emit('button_event', event_data)
-        self.button_events.append(event_data)
+        # Appeler le handler existant qui contient toute la logique LED
+        self.handle_button_event(node_addr, payload_str)
 
         # Incrémenter le compteur d'événements du BR
         border_router_manager.increment_event_counter(br_id)
