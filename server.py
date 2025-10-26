@@ -238,8 +238,8 @@ class CoAPServer:
         Returns:
             tuple: (success: bool, request_id: str ou None, error: str ou None)
         """
-        # Trouver le BR qui gère ce node
-        br_id = border_router_manager.get_br_for_node(node_name)
+        # Trouver le BR qui gère ce node (utilise le mapping dynamique des événements)
+        br_id = native_ws_handler.get_br_for_node(node_name)
         if not br_id:
             error_msg = f"Aucun Border Router online ne gère le node {node_name}"
             print(f"⚠️ {error_msg}")
