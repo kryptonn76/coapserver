@@ -290,7 +290,17 @@ class CoAPServer:
         print(f"🔘 Événement bouton depuis BR {br_id}, node {node_name}: {payload_data}")
 
         # Récupérer l'adresse IPv6 du node
-        node_addr = self.registry.get_address_by_node(node_name)
+        node_data = self.registry.nodes.get(node_name)
+        if not node_data:
+            print(f"❌ Node {node_name} non trouvé dans le registre")
+            return
+
+        # Extraire l'adresse (nouveau format dict ou ancien format string)
+        if isinstance(node_data, dict):
+            node_addr = node_data.get('address')
+        else:
+            node_addr = node_data  # Ancien format (compatibilité)
+
         if not node_addr:
             print(f"❌ Impossible de trouver l'adresse pour {node_name}")
             return
