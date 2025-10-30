@@ -94,6 +94,11 @@
       "address": "fdc7:4097:c896:f63b:def0:ffbf:c6b9:fffe",
       "ordre": 0,
       "connexes": []
+    },
+    "PL_04": {
+      "address": "fd78:8e78:3bfe:1:dcb:6a08:8b68:91d9",
+      "ordre": 0,
+      "connexes": []
     }
   }
 }
